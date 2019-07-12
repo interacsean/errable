@@ -1,7 +1,7 @@
 {
-  "name": "pronad",
-  "version": "0.1.2",
-  "description": "Extend Promises with monadic functions",
+  "name": "monax",
+  "version": "0.1.0",
+  "description": "Simple and approachable, type friendly monads for javascript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -17,17 +17,17 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/interacsean/pronad.git"
+    "url": "git+https://github.com/interacsean/monax.git"
   },
   "bugs": {
-    "url": "https://github.com/interacsean/pronad/issues"
+    "url": "https://github.com/interacsean/monax/issues"
   },
-  "homepage": "https://github.com/interacsean/pronad#readme",
+  "homepage": "https://github.com/interacsean/monax#readme",
   "devDependencies": {
-    "@types/jest": "^24.0.11",
-    "jest": "^23.6.0",
-    "ts-jest": "^23.10.5",
-    "typescript": "^3.4.4"
+    "@types/jest": "24.0.11",
+    "jest": "23.6.0",
+    "ts-jest": "23.10.5",
+    "typescript": "3.4.4"
   },
   "dependencies": {}
 }

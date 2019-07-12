@@ -11,6 +11,7 @@
  *     - this may make overloads complex as 2nd arg could be function or monax
  *  - test for getLeft
  *  - + tap/dblTap
+ *  - Consider `type Optional<T> = T | undefined` and `type Monax<SomeErrType, T> = T | Error<type>`
  */
 const curry = (fn: Function, ...args: any[]) =>
   (fn.length <= args.length)
