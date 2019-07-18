@@ -15,9 +15,9 @@ const curry = (fn: Function, ...args: any[]) =>
     ? fn(...args)
     : (...more: any[]) => curry(fn, ...args, ...more);
 
-export type Err<E> = [false, E, undefined];
+export type Err<E> = { data: E } & Error;
 export type Left<E> = Err<E>;
-export type Val<T> = [true, undefined, T];
+export type Val<T> = T;
 export type Right<E> = Val<E>;
 export type Monax<E, T> = Err<E> | Val<T>
 
@@ -28,20 +28,23 @@ export type Monax<E, T> = Err<E> | Val<T>
  ************************/
 
 export function right<T>(v: T): Val<T> {
-  return [true, undefined, v];
+  return v;
 }
 export const val = right;
 
 export function isRight<E, T>(m: Monax<E, T>): m is Val<T> {
-  return m[0];
+  return !(m instanceof Error);
 }
 export const isVal = isRight;
 
-export const getRight = <T>(r: Val<T>): T => r[2];
+export const getRight = <T>(r: Val<T>): T => r;
 export const getVal = getRight;
 
+// todo: custom error (MonadError)
 export function left<E>(e: E): Err<E> {
-  return [false, e, undefined];
+  const err = Error(typeof e === 'string' ? e : undefined);
+  err.data = e;
+  return err as Err<E>;
 }
 export const err = left;
 
@@ -50,7 +53,7 @@ export function isLeft<E, T>(m: Monax<E, T>): m is Err<E> {
 }
 export const isErr = isLeft;
 
-export const getLeft = <E>(l: Err<E>): E => l[1];
+export const getLeft = <E>(l: Err<E>): E => l.data;
 export const getErr = getLeft;
 
 export function fromFalsey<E, T>(val: T | undefined | null | false, ifFalsey: E): Monax<E, T> {
