@@ -47,7 +47,7 @@ export function left<E>(e: E): Err<E> {
 export const err = left;
 
 export function isLeft<E, T>(m: Monax<E, T>): m is Err<E> {
-  return !m[0];
+  return !isRight(m);
 }
 export const isErr = isLeft;
 
@@ -82,7 +82,7 @@ function _flatMap<E, T, R>(
   fn: (v: T) => Monax<E, R>,
   m: Monax<E, T>,
 ): Monax<E, R> {
-  return isRight(m) ? fn(m[2]) : m as Monax<E, R>;
+  return isRight(m) ? fn(getRight(m)) : m as Monax<E, R>;
 }
 
 function flatMap<E, T, R>(fn: ((v: T) => Monax<E, R>), m: Monax<E, T>): Monax<E, R>;
@@ -107,7 +107,7 @@ export const bind = flatMap;
  */
 
 function _map<E, T, R>(fn: (v: T) => R, m: Monax<E, T>): Monax<E, R> {
-  return isRight(m) ? right(fn(m[2])) : m as Monax<E, R>;
+  return isRight(m) ? right(fn(getRight(m))) : m as Monax<E, R>;
 }
 
 function map<E, T, R>(fn: ((v: T) => R), m: Monax<E, T>): Monax<E, R>;
@@ -129,7 +129,7 @@ export const withVal = map;
 
 function _awaitMap<E, T, R>(fn: (v: T) => Promise<R>, m: Monax<E, T>): Promise<Monax<E, R>> {
   return isRight(m)
-    ? fn(m[2]).then(right)
+    ? fn(right(m)).then(right)
     : Promise.resolve(m) as Promise<Monax<E, R>>;
 }
 
@@ -154,7 +154,7 @@ function _leftFlatMap<E, T, F>(
   fn: (e: E) => Monax<F, T>,
   m: Monax<E, T>,
 ): Monax<F, T> {
-  return isLeft(m) ? fn(m[1]) : m as Monax<F, T>;
+  return isLeft(m) ? fn(getLeft(m)) : m as Monax<F, T>;
 }
 
 function leftFlatMap<E, T, F>(fn: ((e: F) => Monax<F, T>), m: Monax<E, T>): Monax<F, T>;
@@ -180,7 +180,7 @@ export const errFlatMap = leftFlatMap;
  */
 
 function _leftMap<E, T, F>(fn: (v: E) => F, m: Monax<E, T>): Monax<F, T> {
-  return isLeft(m) ? left(fn(m[1])) : m as Monax<F, T>;
+  return isLeft(m) ? left(fn(getLeft(m))) : m as Monax<F, T>;
 }
 
 function leftMap<E, T, F>(fn: ((v: E) => F), m: Monax<E, T>): Monax<F, T>;
@@ -203,7 +203,7 @@ export const errMap = leftMap;
 
 function _awaitLeftMap<E, T, F>(fn: (v: E) => Promise<F>, m: Monax<E, T>): Promise<Monax<F, T>> {
   return isLeft(m)
-    ? fn(m[1]).then(left)
+    ? fn(getLeft(m)).then(left)
     : Promise.resolve(m) as Promise<Monax<F, T>>;
 }
 
