@@ -1,17 +1,14 @@
 /**
  * todo:
  *  - Update README propers
- *  - fromPromise
  *  - compat with left(undefined) [option]
- *  - chain – class that aliases all functions to
- *  - include config option to change mode from L/R to E | {}
+ *  - chain – class that aliases all functions to?
  *  - fork (like cata but must returns void)
  *  - cata / recover (takes (fn: (err: E) => R) and unwraps the val)
  *     - the function for a val would be optional - if omitted, is `id`
  *     - this may make overloads complex as 2nd arg could be function or monax
- *  - test for getLeft
  *  - + tap/dblTap
- *  - Consider `type Optional<T> = T | undefined` and `type Monax<SomeErrType, T> = T | Error<type>`
+ *  - Config option for `type Optional<T> = T | undefined` and `type Monax<SomeErrType, T> = T | Error<type>`
  */
 const curry = (fn: Function, ...args: any[]) =>
   (fn.length <= args.length)
@@ -23,6 +20,8 @@ export type Left<E> = Err<E>;
 export type Val<T> = [true, undefined, T];
 export type Right<E> = Val<E>;
 export type Monax<E, T> = Err<E> | Val<T>
+
+
 
 /*************************
  *** Monax constructors **
@@ -67,9 +66,33 @@ export function fromNull<E, T>(val: T | undefined | null, ifNully: E): Monax<E, 
 }
 
 
+export function fromPromise<T>(promise: Promise<T>): Promise<Monax<any, T>> {
+  return promise.then(
+    right,
+    left,
+  );
+}
+
+
 /**************************************
  *** Monax transformation functions  **
  *************************************/
+
+function _flatMap<E, T, R>(retProm: false, fn: ((v: T) => Monax<E, R>), m: Monax<E, T>): Monax<E, R>;
+function _flatMap<E, T, R>(retProm: true, fn: ((v: T) => Promise<Monax<E, R>>), m: Monax<E, T>): Promise<Monax<E, R>>;
+function _flatMap<E, T, R>(
+  retProm: boolean,
+  fn: ((v: T) => Monax<E, R>) | ((v: T) => Promise<Monax<E, R>>),
+  m: Monax<E, T>,
+) {
+  return isRight(m)
+    ? fn(getRight(m))
+    : (retProm
+      ? Promise.resolve(m)
+      : m);
+}
+
+
 
 /**
  * FlatMap
@@ -78,25 +101,36 @@ export function fromNull<E, T>(val: T | undefined | null, ifNully: E): Monax<E, 
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function _flatMap<E, T, R>(
-  fn: (v: T) => Monax<E, R>,
-  m: Monax<E, T>,
-): Monax<E, R> {
-  return isRight(m) ? fn(getRight(m)) : m as Monax<E, R>;
-}
-
 function flatMap<E, T, R>(fn: ((v: T) => Monax<E, R>), m: Monax<E, T>): Monax<E, R>;
-function flatMap<E, T, R>(fn: ((v: T) => Promise<Monax<E, R>>), m: Monax<E, T>): Promise<Monax<E, R>>;
 function flatMap<E, T, R>(fn: ((v: T) => Monax<E, R>)): ((m: Monax<E, T>) => Monax<E, R>);
-function flatMap<E, T, R>(fn: ((v: T) => Promise<Monax<E, R>>)): ((m: Monax<E, T>) => Promise<Monax<E, R>>);
-function flatMap<E, T, R>(this: any, fn: ((v: T) => Monax<E, R>) | ((v: T) => Promise<Monax<E, R>>), m?: Monax<E, T>) {
-  return curry(_flatMap).apply(this, arguments);
+function flatMap<E, T, R>(this: any, fn: ((v: T) => Monax<E, R>), m?: Monax<E, T>) {
+  return curry(_flatMap)(false).apply(this, arguments);
 }
 
 export { flatMap }
 
 export const ifVal = flatMap;
 export const bind = flatMap;
+
+/**
+ * AsyncFlatMap
+ *
+ * @param fn Function to map if a Right/Val
+ * @param m Monad to evaluate for execution
+ * @return Monad
+ */
+function asyncFlatMap<E, T, R>(fn: ((v: T) => Promise<Monax<E, R>>), m: Monax<E, T>): Promise<Monax<E, R>>;
+function asyncFlatMap<E, T, R>(fn: ((v: T) => Promise<Monax<E, R>>)): ((m: Monax<E, T>) => Promise<Monax<E, R>>);
+function asyncFlatMap<E, T, R>(this: any, fn: ((v: T) => Promise<Monax<E, R>>), m?: Monax<E, T>) {
+  return curry(_flatMap)(true).apply(this, arguments);
+}
+
+export { asyncFlatMap }
+
+export const asyncIfVal = asyncFlatMap;
+export const asyncBind = asyncFlatMap;
+
+
 
 /**
  * Map
@@ -120,6 +154,8 @@ export { map };
 
 export const withVal = map;
 
+
+
 /**
  * awaitMap
  * @param fn Promise-returning-function to map if a Right/Val
@@ -129,7 +165,7 @@ export const withVal = map;
 
 function _awaitMap<E, T, R>(fn: (v: T) => Promise<R>, m: Monax<E, T>): Promise<Monax<E, R>> {
   return isRight(m)
-    ? fn(right(m)).then(right)
+    ? fn(getRight(m)).then(right)
     : Promise.resolve(m) as Promise<Monax<E, R>>;
 }
 
@@ -143,6 +179,22 @@ export { awaitMap };
 
 export const withAwaitedVal = awaitMap;
 
+
+
+function _leftFlatMap<E, T, F>(retProm: false, fn: ((e: E) => Monax<F, T>), m: Monax<E, T>): Monax<F, T>;
+function _leftFlatMap<E, T, F>(retProm: true, fn: ((e: E) => Promise<Monax<F, T>>), m: Monax<E, T>): Promise<Monax<F, T>>;
+function _leftFlatMap<E, T, F>(
+  retProm: boolean,
+  fn: ((e: E) => Monax<F, T>) | ((e: E) => Promise<Monax<F, T>>),
+  m: Monax<E, T>,
+) {
+  return isLeft(m)
+    ? fn(getLeft(m))
+    : (retProm
+      ? Promise.resolve(m)
+      : m);
+}
+
 /**
  * LeftFlatMap
  *
@@ -150,26 +202,41 @@ export const withAwaitedVal = awaitMap;
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function _leftFlatMap<E, T, F>(
-  fn: (e: E) => Monax<F, T>,
-  m: Monax<E, T>,
-): Monax<F, T> {
-  return isLeft(m) ? fn(getLeft(m)) : m as Monax<F, T>;
-}
-
 function leftFlatMap<E, T, F>(fn: ((e: F) => Monax<F, T>), m: Monax<E, T>): Monax<F, T>;
-function leftFlatMap<E, T, F>(fn: ((e: F) => Promise<Monax<F, T>>), m: Monax<E, T>): Promise<Monax<F, T>>;
 function leftFlatMap<E, T, F>(fn: ((e: F) => Monax<F, T>)): ((m: Monax<E, T>) => Monax<F, T>);
-function leftFlatMap<E, T, F>(fn: ((e: F) => Promise<Monax<F, T>>)): ((m: Monax<E, T>) => Promise<Monax<F, T>>);
-function leftFlatMap<E, T, F>(this: any, fn: ((e: F) => Monax<F, T>) | ((e: F) => Promise<Monax<F, T>>), m?: Monax<E, T>) {
-  return curry(_leftFlatMap).apply(this, arguments);
+function leftFlatMap<E, T, F>(this: any, fn: ((e: F) => Monax<F, T>), m?: Monax<E, T>) {
+  return curry(_leftFlatMap)(false).apply(this, arguments);
 }
 
 export { leftFlatMap }
 
 export const ifErr = leftFlatMap;
 export const leftBind = leftFlatMap;
+export const errBind = leftFlatMap;
 export const errFlatMap = leftFlatMap;
+
+
+/**
+ * AsyncLeftFlatMap
+ *
+ * @param fn Function to map if a Left/Val
+ * @param m Monad to evaluate for execution
+ * @return Monad
+ */
+function asyncLeftFlatMap<E, T, F>(fn: ((e: F) => Promise<Monax<F, T>>), m: Monax<E, T>): Promise<Monax<F, T>>;
+function asyncLeftFlatMap<E, T, F>(fn: ((e: F) => Promise<Monax<F, T>>)): ((m: Monax<E, T>) => Promise<Monax<F, T>>);
+function asyncLeftFlatMap<E, T, F>(this: any, fn: ((e: F) => Promise<Monax<F, T>>), m?: Monax<E, T>) {
+  return curry(_leftFlatMap)(true).apply(this, arguments);
+}
+
+export { asyncLeftFlatMap }
+
+export const asyncIfErr = asyncLeftFlatMap;
+export const asyncLeftBind = asyncLeftFlatMap;
+export const asyncErrBind = asyncLeftFlatMap;
+export const asyncErrFlatMap = asyncLeftFlatMap;
+
+
 
 /**
  * LeftMap
@@ -218,50 +285,6 @@ export { awaitLeftMap };
 export const withAwaitedErr = awaitLeftMap;
 export const awaitErrMap = awaitLeftMap;
 
-
-// interface PronadConstructor {
-//   unit<T>(val: T): Pnd<never, T>,
-//   fromFalsey<E, T>(val: T | undefined | null | false, ifFalsey?: E): Pnd<E, T>,
-//   fromNull<E, T>(val: T | undefined | null, ifNull?: E): Pnd<E, T>,
-// }
-
-// export const Pronad: PronadConstructor = {
-//   unit: <T>(val: T): Pnd<any, T> => Promise.resolve(val),
-//   fromFalsey: <E, T>(val: T | undefined | null | false, ifFalsey?: E): Pnd<E, T> => {
-//     return val !== undefined && val !== null && val !== false
-//       ? Promise.resolve(val)
-//       : Promise.reject(typeof ifFalsey !== 'undefined' ? ifFalsey : null);
-//   },
-//   fromNull: <E, T>(val: T | undefined | null, ifNull?: E): Pnd<E, T> => {
-//     return val !== undefined && val !== null
-//       ? Promise.resolve(val)
-//       : Promise.reject(typeof ifNull !== 'undefined' ? ifNull : null);
-//   }
-// }
-
-// export const monadifyPromises = () => {
-//   Promise.prototype.map = function<E, T, R>(fn: (resVal: T) => R): Pnd<E, R> {
-//     return this.then(fn);
-//   };
-//   Promise.prototype.rejMap =
-//   Promise.prototype.leftMap = function<E, T, F>(fn: (rejVal: E | any) => F): Pnd<F, T> {
-//     return this.catch((e: E | any): Pnd<F, never> => Promise.reject(fn(e)));
-//   };
-
-//   Promise.prototype.chain =
-//   Promise.prototype.flatMap =
-//   Promise.prototype.bind = function<E, T, R>(fn: (resVal: T) => Pnd<E, R>): Pnd<E, R> {
-//     return this.then(fn);
-//   };
-
-//   Promise.prototype.rejChain =
-//   Promise.prototype.rejFlatMap =
-//   Promise.prototype.rejBind =
-//   Promise.prototype.leftChain =
-//   Promise.prototype.leftFlatMap =
-//   Promise.prototype.leftBind = function<E, T, F>(fn: (rejVal: E | any) => Pnd<F, T>): Pnd<F, T> {
-//     return this.catch((e: E | any): Pnd<F, T> => fn(e));
-//   };
 
 //   Promise.prototype.cata = function<T, E, R>(
 //     rejFn: (rejVal: E | any) => R,

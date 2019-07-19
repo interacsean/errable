@@ -1,13 +1,14 @@
 # Monax
 
-Monax is a suite of functions to help control logic flow.
+Monax is a suite of functions to help control logical flow and exception/error
+states while maintaining type safety, and encouraging consistent and flat programming.
  
- - Designed to be compatible in promise chains!
- - Retains type information for error states
- - Improved flow-control over promises (as per Fluture library)
+ - Designed to be compatible in promise .then chains
+ - Retains type safety for error states (unlike rejected Promises)
+ - Improved flow-control over promises (as per the Fluture library)
  - Simplified terminology available (not so much with Fluture)
 
-It is a also a simplified monad library, but you don't really need to know what
+Monax is a monad library, but you don't really need to know what
 a monad is or how to use one in order to use Monax; we've translated the
 traditional mathemathical terms to an intuitive interface for easy onboarding.
 
@@ -18,64 +19,66 @@ traditional mathemathical terms to an intuitive interface for easy onboarding.
 ## Guide on use
 
 
-Monax is most useful in typescript, where throwing and catching exceptions in Promises is
-[imprecise by design](https://github.com/Microsoft/TypeScript/issues/6283#issuecomment-167851788) 
+Monax is most useful in typescript (flow defs coming), where throwing and catching exceptions in Promises is
+[imprecise by design](https://github.com/Microsoft/TypeScript/issues/6283#issuecomment-167851788). 
 
 ### Using functionally:
 
-All features are exported as standalone functions.  This becomes more useful in promise chains
+All features are exported as standalone functions.
+
+It becomes more useful when used in a promise chain, composed or pipeline
 (see further below) but is shown here as a starting point:
 
-**Simple but fairly useless example:**
+**Simple but useless and naive example:**
 ```
 // You can import individual functions and types:
-import { Monad, val, err, withVal } from 'monax-js';
-// or import all using the * pattern:
-import * as Mx from 'monax-js'
+import { Monax, val, err, withVal } from 'monax-js';
 
-/**
- * `selectFoo(userId: number | undefined): Monad<number, string>` returns a data container that
- * can hold  the string value or a numeric error, and also holds the state of the
- * data (either val or err).
- */
+// or import all using the `* as` pattern:
+import * as Mx from 'monax-js';
 
-// mock permissioning
-const validUserIds = [1, 2, 3, 5, 8];
+const numAsNumber = Monax<Error, number> = Mx.fromFalsey(
+  badFunctionReturnsNumberOrFalseyForError,
+  Error("Number error: Internal error code"),
+);
 
-function selectFoo(userId: number | undefined): Monad<number, string> {
-    // Create a Monax that is either an error of type number, or a value of type string
-    const fooMonax: Monad<number, string> = (userId !== undefined && validUserIds.includes(userId))
-      ? Mx.val('foo')
-      : Mx.err(403);
-    
-    // If it is a value, perform the following transformation function on the value
-    return Mx.withVal((val: string): string => `You selected a ${val}`, fooMonax);
-}
+const numAsNumber = Monax<Error, string> = Mx.ifVal(
+  (num: number) => `Thanks for choosing ${num.toLocaleString()}`,
+  mAsString,
+);
 
+const numAsNumber = Monax<never, string> = Mx.ifErr(
+  (err: Error) => "We couldn't retrieve your number",
+  mAsString,
+);
+
+Mx.tap(
+  (responseMessage: string) => console.log(responseMessage),
+  numAsNumber,
+);
 ```
 
 *Why is this useful*? 
 
-In tradiational javascript, errors are generally thrown within a function, making it annoying to
-recover within the same function scope, and impossible to annotate your function to ensure that
-a consumer appropriately handles the error.
+In traditional javascript, errors are generally thrown within a function, making it annoying to
+recover within the same function scope, hard to enforce catching, and impossible to annotate your 
+function to ensure that a consumer appropriately handles the exception.
 
 If the caller of a function did not wrap the call in a `try`/`catch`,
-the error may be caught further upstream, or not at all, which may be undesirable.  Additionally
+the error may be caught further upstream, or not at all.  Additionally
 caught errors are of unknown or coerced type.
 
-Simply put, the program flow could not be easily known, nor could it be annotated or
+Simply put, the program flow can not be easily expressed, nor could it be annotated or
 determined by the type signatures.
 
-Returning a container (a monad – our monax) solves this problem of multiple return types.
+Returning an expressive type (our monax) solves this problem of multiple return types.
 
 **A more practical example**
 
 _(This example is in an Express app context but should be simple to follow even if you are not familiar with Express)_
 
 ```
-import { Request } from 'express';
-import { selectFoo } from 'the/above/example.ts';
+import { fnReturnsNumberOrThrows } from 'some/module';
 import { Monax }, * as Mx from 'monax-js';
 
 function checkout(req: Request) {
@@ -216,7 +219,7 @@ Monax has traditional monad-like aliases for all functions:
 ```
 right == val
 left == err
-// fromPromise (no aliases)
+fromPromise (no aliases)
 fromNull (no aliases)
 fromFalsey (no aliases)
 ```
@@ -226,9 +229,11 @@ fromFalsey (no aliases)
 map == withVal
 awaitMap == withAwaitedVal
 flatMap == bind == ifVal
+asyncFlatMap == asyncBind == asyncIfVal
 leftMap == errMap == withErr
 awaitLeftMap == awaitErrMap == withAwaitedErr
 leftFlatMap == leftBind == errFlatMap == errBind == ifErr
+asyncLeftFlatMap == asyncLeftBind == asyncErrFlatMap == asyncErrBind == asyncIfErr
 // cata == recover
 ```
 

@@ -3,17 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * todo:
  *  - Update README propers
- *  - errMap / ifErr
- *  - fromPromise
- *  - compat with left() [option]
- *  - chain – class that aliases all functions to
- *  - include config option to change mode from L/R to E | {}
+ *  - compat with left(undefined) [option]
+ *  - chain – class that aliases all functions to?
  *  - fork (like cata but must returns void)
  *  - cata / recover (takes (fn: (err: E) => R) and unwraps the val)
  *     - the function for a val would be optional - if omitted, is `id`
  *     - this may make overloads complex as 2nd arg could be function or monax
- *  - test for getLeft
  *  - + tap/dblTap
+ *  - Config option for `type Optional<T> = T | undefined` and `type Monax<SomeErrType, T> = T | Error<type>`
  */
 var curry = function (fn) {
     var args = [];
@@ -50,7 +47,7 @@ function left(e) {
 exports.left = left;
 exports.err = left;
 function isLeft(m) {
-    return !m[0];
+    return !isRight(m);
 }
 exports.isLeft = isLeft;
 exports.isErr = isLeft;
@@ -68,25 +65,29 @@ function fromNull(val, ifNully) {
         : left(ifNully);
 }
 exports.fromNull = fromNull;
-/**************************************
- *** Monax transformation functions  **
- *************************************/
-/**
- * FlatMap
- *
- * @param fn Function to map if a Right/Val
- * @param m Monad to evaluate for execution
- * @return Monad
- */
-function _flatMap(fn, m) {
-    return isRight(m) ? fn(m[2]) : m;
+function fromPromise(promise) {
+    return promise.then(right, left);
+}
+exports.fromPromise = fromPromise;
+function _flatMap(retProm, fn, m) {
+    return isRight(m)
+        ? fn(exports.getRight(m))
+        : (retProm
+            ? Promise.resolve(m)
+            : m);
 }
 function flatMap(fn, m) {
-    return curry(_flatMap).apply(this, arguments);
+    return curry(_flatMap)(false).apply(this, arguments);
 }
 exports.flatMap = flatMap;
 exports.ifVal = flatMap;
 exports.bind = flatMap;
+function asyncFlatMap(fn, m) {
+    return curry(_flatMap)(true).apply(this, arguments);
+}
+exports.asyncFlatMap = asyncFlatMap;
+exports.asyncIfVal = asyncFlatMap;
+exports.asyncBind = asyncFlatMap;
 /**
  * Map
  *
@@ -95,7 +96,7 @@ exports.bind = flatMap;
  * @return Monad
  */
 function _map(fn, m) {
-    return isRight(m) ? right(fn(m[2])) : m;
+    return isRight(m) ? right(fn(exports.getRight(m))) : m;
 }
 function map(fn, m) {
     return curry(_map).apply(this, arguments);
@@ -110,7 +111,7 @@ exports.withVal = map;
  */
 function _awaitMap(fn, m) {
     return isRight(m)
-        ? fn(m[2]).then(right)
+        ? fn(exports.getRight(m)).then(right)
         : Promise.resolve(m);
 }
 function awaitMap(fn, m) {
@@ -118,6 +119,29 @@ function awaitMap(fn, m) {
 }
 exports.awaitMap = awaitMap;
 exports.withAwaitedVal = awaitMap;
+function _leftFlatMap(retProm, fn, m) {
+    return isLeft(m)
+        ? fn(exports.getLeft(m))
+        : (retProm
+            ? Promise.resolve(m)
+            : m);
+}
+function leftFlatMap(fn, m) {
+    return curry(_leftFlatMap)(false).apply(this, arguments);
+}
+exports.leftFlatMap = leftFlatMap;
+exports.ifErr = leftFlatMap;
+exports.leftBind = leftFlatMap;
+exports.errBind = leftFlatMap;
+exports.errFlatMap = leftFlatMap;
+function asyncLeftFlatMap(fn, m) {
+    return curry(_leftFlatMap)(true).apply(this, arguments);
+}
+exports.asyncLeftFlatMap = asyncLeftFlatMap;
+exports.asyncIfErr = asyncLeftFlatMap;
+exports.asyncLeftBind = asyncLeftFlatMap;
+exports.asyncErrBind = asyncLeftFlatMap;
+exports.asyncErrFlatMap = asyncLeftFlatMap;
 /**
  * LeftMap
  *
@@ -126,7 +150,7 @@ exports.withAwaitedVal = awaitMap;
  * @return Monad
  */
 function _leftMap(fn, m) {
-    return isLeft(m) ? left(fn(m[1])) : m;
+    return isLeft(m) ? left(fn(exports.getLeft(m))) : m;
 }
 function leftMap(fn, m) {
     return curry(_leftMap).apply(this, arguments);
@@ -142,7 +166,7 @@ exports.errMap = leftMap;
  */
 function _awaitLeftMap(fn, m) {
     return isLeft(m)
-        ? fn(m[1]).then(left)
+        ? fn(exports.getLeft(m)).then(left)
         : Promise.resolve(m);
 }
 function awaitLeftMap(fn, m) {
@@ -151,45 +175,6 @@ function awaitLeftMap(fn, m) {
 exports.awaitLeftMap = awaitLeftMap;
 exports.withAwaitedErr = awaitLeftMap;
 exports.awaitErrMap = awaitLeftMap;
-// interface PronadConstructor {
-//   unit<T>(val: T): Pnd<never, T>,
-//   fromFalsey<E, T>(val: T | undefined | null | false, ifFalsey?: E): Pnd<E, T>,
-//   fromNull<E, T>(val: T | undefined | null, ifNull?: E): Pnd<E, T>,
-// }
-// export const Pronad: PronadConstructor = {
-//   unit: <T>(val: T): Pnd<any, T> => Promise.resolve(val),
-//   fromFalsey: <E, T>(val: T | undefined | null | false, ifFalsey?: E): Pnd<E, T> => {
-//     return val !== undefined && val !== null && val !== false
-//       ? Promise.resolve(val)
-//       : Promise.reject(typeof ifFalsey !== 'undefined' ? ifFalsey : null);
-//   },
-//   fromNull: <E, T>(val: T | undefined | null, ifNull?: E): Pnd<E, T> => {
-//     return val !== undefined && val !== null
-//       ? Promise.resolve(val)
-//       : Promise.reject(typeof ifNull !== 'undefined' ? ifNull : null);
-//   }
-// }
-// export const monadifyPromises = () => {
-//   Promise.prototype.map = function<E, T, R>(fn: (resVal: T) => R): Pnd<E, R> {
-//     return this.then(fn);
-//   };
-//   Promise.prototype.rejMap =
-//   Promise.prototype.leftMap = function<E, T, F>(fn: (rejVal: E | any) => F): Pnd<F, T> {
-//     return this.catch((e: E | any): Pnd<F, never> => Promise.reject(fn(e)));
-//   };
-//   Promise.prototype.chain =
-//   Promise.prototype.flatMap =
-//   Promise.prototype.bind = function<E, T, R>(fn: (resVal: T) => Pnd<E, R>): Pnd<E, R> {
-//     return this.then(fn);
-//   };
-//   Promise.prototype.rejChain =
-//   Promise.prototype.rejFlatMap =
-//   Promise.prototype.rejBind =
-//   Promise.prototype.leftChain =
-//   Promise.prototype.leftFlatMap =
-//   Promise.prototype.leftBind = function<E, T, F>(fn: (rejVal: E | any) => Pnd<F, T>): Pnd<F, T> {
-//     return this.catch((e: E | any): Pnd<F, T> => fn(e));
-//   };
 //   Promise.prototype.cata = function<T, E, R>(
 //     rejFn: (rejVal: E | any) => R,
 //     resFn: (resVal: T) => R,
