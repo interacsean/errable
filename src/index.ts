@@ -1,10 +1,11 @@
 /**
  * todo:
  *  - Update README propers
- *  - compat with left(undefined) [option]
- *  - chain – class that aliases all functions to?
- *  - fork (like cata but must returns void)
- *  - cata / recover (takes (fn: (err: E) => R) and unwraps the val)
+ *  - compat with left(undefined) / Emptable / Errable type (aliases)
+ *  - monadic aliases to come from a different file
+ *  - chain – class that aliases all functions to / non-promise .thens
+ *  - + fork (like cata but must returns void)
+ *  - + cata / recover (takes (fn: (err: E) => R) and unwraps the val)
  *     - the function for a val would be optional - if omitted, is `id`
  *     - this may make overloads complex as 2nd arg could be function or monax
  *  - + tap/dblTap
@@ -20,7 +21,9 @@ export type Left<E> = Err<E>;
 export type Val<T> = T;
 export type Right<E> = Val<E>;
 export type Monax<E, T> = Err<E> | Val<T>
-
+export type Errable<E, T> = Monax<E, T>;
+export type Emptable<T> = T | undefined;
+export type Optionax<T> = Emptable<T>;
 
 
 /*************************
@@ -40,9 +43,12 @@ export const isVal = isRight;
 export const getRight = <T>(r: Val<T>): T => r;
 export const getVal = getRight;
 
-// todo: custom error (MonadError)
 export function left<E>(e: E): Err<E> {
-  const err = Error(typeof e === 'string' ? e : undefined);
+  const err = e instanceof Error
+    ? e
+    : Error(typeof e === 'string' ? e : undefined);
+  // todo: custom error (MonadError)
+  // @ts-ignore
   err.data = e;
   return err as Err<E>;
 }

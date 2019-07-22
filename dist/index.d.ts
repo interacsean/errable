@@ -1,8 +1,13 @@
-export declare type Err<E> = [false, E, undefined];
+export declare type Err<E> = {
+    data: E;
+} & Error;
 export declare type Left<E> = Err<E>;
-export declare type Val<T> = [true, undefined, T];
+export declare type Val<T> = T;
 export declare type Right<E> = Val<E>;
 export declare type Monax<E, T> = Err<E> | Val<T>;
+export declare type Errable<E, T> = Monax<E, T>;
+export declare type Emptable<T> = T | undefined;
+export declare type Optionax<T> = Emptable<T>;
 /*************************
  *** Monax constructors **
  ************************/
@@ -10,14 +15,14 @@ export declare function right<T>(v: T): Val<T>;
 export declare const val: typeof right;
 export declare function isRight<E, T>(m: Monax<E, T>): m is Val<T>;
 export declare const isVal: typeof isRight;
-export declare const getRight: <T>(r: [true, undefined, T]) => T;
-export declare const getVal: <T>(r: [true, undefined, T]) => T;
+export declare const getRight: <T>(r: T) => T;
+export declare const getVal: <T>(r: T) => T;
 export declare function left<E>(e: E): Err<E>;
 export declare const err: typeof left;
 export declare function isLeft<E, T>(m: Monax<E, T>): m is Err<E>;
 export declare const isErr: typeof isLeft;
-export declare const getLeft: <E>(l: [false, E, undefined]) => E;
-export declare const getErr: <E>(l: [false, E, undefined]) => E;
+export declare const getLeft: <E>(l: Err<E>) => E;
+export declare const getErr: <E>(l: Err<E>) => E;
 export declare function fromFalsey<E, T>(val: T | undefined | null | false, ifFalsey: E): Monax<E, T>;
 export declare function fromNull<E, T>(val: T | undefined | null, ifNully: E): Monax<E, T>;
 export declare function fromPromise<T>(promise: Promise<T>): Promise<Monax<any, T>>;

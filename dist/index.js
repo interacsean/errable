@@ -3,10 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * todo:
  *  - Update README propers
- *  - compat with left(undefined) [option]
- *  - chain – class that aliases all functions to?
- *  - fork (like cata but must returns void)
- *  - cata / recover (takes (fn: (err: E) => R) and unwraps the val)
+ *  - compat with left(undefined) / Emptable / Errable type (aliases)
+ *  - monadic aliases to come from a different file
+ *  - chain – class that aliases all functions to / non-promise .thens
+ *  - + fork (like cata but must returns void)
+ *  - + cata / recover (takes (fn: (err: E) => R) and unwraps the val)
  *     - the function for a val would be optional - if omitted, is `id`
  *     - this may make overloads complex as 2nd arg could be function or monax
  *  - + tap/dblTap
@@ -30,19 +31,25 @@ var curry = function (fn) {
  *** Monax constructors **
  ************************/
 function right(v) {
-    return [true, undefined, v];
+    return v;
 }
 exports.right = right;
 exports.val = right;
 function isRight(m) {
-    return m[0];
+    return !(m instanceof Error);
 }
 exports.isRight = isRight;
 exports.isVal = isRight;
-exports.getRight = function (r) { return r[2]; };
+exports.getRight = function (r) { return r; };
 exports.getVal = exports.getRight;
 function left(e) {
-    return [false, e, undefined];
+    var err = e instanceof Error
+        ? e
+        : Error(typeof e === 'string' ? e : undefined);
+    // todo: custom error (MonadError)
+    // @ts-ignore
+    err.data = e;
+    return err;
 }
 exports.left = left;
 exports.err = left;
@@ -51,7 +58,7 @@ function isLeft(m) {
 }
 exports.isLeft = isLeft;
 exports.isErr = isLeft;
-exports.getLeft = function (l) { return l[1]; };
+exports.getLeft = function (l) { return l.data; };
 exports.getErr = exports.getLeft;
 function fromFalsey(val, ifFalsey) {
     return val !== undefined && val !== null && val !== false
