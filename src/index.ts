@@ -43,6 +43,10 @@ export const isVal = isRight;
 export const getRight = <T>(r: Val<T>): T => r;
 export const getVal = getRight;
 
+class MxErr<E> extends Error {
+  
+}
+
 export function left<E>(e: E): Err<E> {
   const err = e instanceof Error
     ? e
@@ -295,12 +299,81 @@ export const withAwaitedErr = awaitLeftMap;
 export const awaitErrMap = awaitLeftMap;
 
 
-//   Promise.prototype.cata = function<T, E, R>(
-//     rejFn: (rejVal: E | any) => R,
-//     resFn: (resVal: T) => R,
-//   ): Pnd<never, R> {
-//     return this.then(resFn, rejFn);
-//   };
+
+/**
+ * Fork
+ * @param fn Function to evaluate if a Right/Val
+ * @param fn Function to evaluate if a Left/Err
+ * @param m  Monad to evaluate for execution
+ * @return Monad
+ */
+
+function _fork<E, T, R>(
+  vFn: (v: T) => R,
+  eFn: (e: E) => R,
+  m: Monax<E, T>,
+): void {
+  isRight(m) ? vFn(getRight(m)) : eFn(getLeft(m))
+}
+
+function fork<E, T>(
+  vFn: ((v: T) => any),
+  eFn: ((e: E) => any),
+  m: Monax<E, T>,
+): void;
+function fork<E, T>(
+  vFn: ((v: T) => any),
+  eFn: ((e: E) => any),
+): ((m: Monax<E, T>) => void);
+function fork<E, T>(
+  this: any,
+  vFn: ((v: T) => any),
+  eFn: ((e: E) => any),
+  m?: Monax<E, T>,
+) {
+  return curry(_fork).apply(this, arguments);
+}
+
+export { fork };
+
+
+/**
+ * Cata
+ * @param fn Function to evaluate if a Right/Val
+ * @param fn Function to evaluate if a Left/Err
+ * @param m  Monad to evaluate for execution
+ * @return Promise<Monad>
+ */
+
+function _cata<E, T, R>(
+  vFn: (v: T) => R,
+  eFn: (e: E) => R,
+  m: Monax<E, T>,
+): R {
+  return isRight(m) ? vFn(getRight(m)) : eFn(getLeft(m))
+}
+
+function cata<E, T, R>(
+  vFn: ((v: T) => R),
+  eFn: ((e: E) => R),
+  m: Monax<E, T>,
+): R;
+function cata<E, T, R>(
+  vFn: ((v: T) => R),
+  eFn: ((e: E) => R),
+): ((m: Monax<E, T>) => R);
+function cata<E, T, R>(
+  this: any,
+  vFn: ((v: T) => R),
+  eFn: ((e: E) => R),
+  m?: Monax<E, T>,
+) {
+  return curry(_cata).apply(this, arguments);
+}
+
+export { cata };
+
+export const ifValElse = cata;
 
 //   Promise.prototype.tap = function<E, T>(fn: (val: T) => void): Pnd<E, T> {
 //     return this.then((val: T): T => {

@@ -7,8 +7,10 @@ function createPromise<T>(resOrRej: boolean, val: T): Promise<T> {
   });
 }
 
+type Fix = { fix: string };
+
 describe('monax', () => {
-  const fixture = {};
+  const fixture: Fix = { fix: 'ture' };
 
   describe('right', () => {
     it('should be recognised by isRight', () => {
@@ -98,7 +100,7 @@ describe('monax', () => {
       const result = Mx.fromNull(fixture, 0);
 
       expect(Mx.isRight(result)).toBe(true);
-      expect(Mx.getVal(result as Mx.Right<number>)).toBe(fixture);
+      expect(Mx.getVal(result as Mx.Right<Fix>)).toBe(fixture);
     });
 
     it('should create right on false', () => {
@@ -119,16 +121,17 @@ describe('monax', () => {
       const result = Mx.fromNull(undefined, 0);
 
       expect(Mx.isRight(result)).toBe(false);
+      expect(Mx.getErr(result as Mx.Left<number>)).toBe(0);
     });
   });
 
   describe('fromPromise factory', () => {
     it('should resolve to right', (done) => {
-      const prom: Promise<Mx.Monax<any, {}>> = Mx.fromPromise(Promise.resolve(fixture));
+      const prom: Promise<Mx.Monax<any, Fix>> = Mx.fromPromise(Promise.resolve(fixture));
 
       prom.then((result) => {
         expect(Mx.isRight(result)).toBe(true);
-        expect(Mx.getVal(result as Mx.Right<number>)).toBe(fixture);
+        expect(Mx.getVal(result as Mx.Right<Fix>)).toBe(fixture);
         done();
       });
     });
@@ -137,7 +140,7 @@ describe('monax', () => {
 
       prom.then((result) => {
         expect(Mx.isRight(result)).toBe(false);
-        expect(Mx.getErr(result as Mx.Left<{}>)).toBe(fixture);
+        expect(Mx.getErr(result as Mx.Left<Fix>)).toBe(fixture);
         done();
       });
     });
@@ -149,10 +152,10 @@ describe('monax', () => {
       const valFix = {}
       const right = Mx.right(valFix);
 
-      const result: Mx.Monax<any, {}> = Mx.map(fn, right);
+      const result: Mx.Monax<any, Fix> = Mx.map(fn, right);
 
       expect(Mx.isRight(result)).toBe(true);
-      expect(Mx.getRight(result as Mx.Right<{}>)).toBe(fixture);
+      expect(Mx.getRight(result as Mx.Right<Fix>)).toBe(fixture);
       expect(fn).toHaveBeenCalledWith(valFix);
     });
     it('should skip a Left', () => {
@@ -163,7 +166,7 @@ describe('monax', () => {
       const result: Mx.Monax<any, {}> = Mx.map(fn, left);
 
       expect(Mx.isRight(result)).toBe(false);
-      expect(Mx.getRight(result as Mx.Right<{}>)).toBeUndefined();
+      expect(Mx.getLeft(result as Mx.Left<{}>)).toBe(valFix);
       expect(fn).not.toHaveBeenCalled();
     });
     it('should be curried', () => {
@@ -173,10 +176,10 @@ describe('monax', () => {
 
       const exec = Mx.map(fn);
 
-      const result: Mx.Monax<any, {}> = exec(right);
+      const result: Mx.Monax<any, Fix> = exec(right);
 
       expect(Mx.isRight(result)).toBe(true);
-      expect(Mx.getRight(result as Mx.Right<{}>)).toBe(fixture);
+      expect(Mx.getRight(result as Mx.Right<Fix>)).toBe(fixture);
       expect(fn).toHaveBeenCalledWith(valFix);
     });
     it('has aliases', () => {
@@ -186,18 +189,18 @@ describe('monax', () => {
 
   describe('awaitMap', () => {
     it('should wait for promises value', (done) => {
-      const fn: (v: any) => any = jest.fn().mockImplementation(() => Promise.resolve(fixture));
+      const fn: (v: {}) => Promise<Fix> = jest.fn().mockImplementation(() => Promise.resolve(fixture));
       const valFix = {};
       const right = Mx.right(valFix);
 
       const exec = Mx.awaitMap(fn);
-      const prom: Promise<Mx.Monax<any, {}>> = exec(right);
+      const prom: Promise<Mx.Monax<any, Fix>> = exec(right);
 
-      prom.then((result: Mx.Monax<any, {}>) => {
+      prom.then((result: Mx.Monax<any, Fix>) => {
         expect(Mx.isRight(result)).toBe(true);
-        expect(Mx.getRight(result as Mx.Right<{}>)).toBe(fixture);
+        expect(Mx.getRight(result as Mx.Right<Fix>)).toBe(fixture);
         expect(fn).toHaveBeenCalledWith(valFix);
-        done()
+        done();
       });
     });
     it('has aliases', () => {
@@ -212,10 +215,10 @@ describe('monax', () => {
       const valFix = {}
       const left = Mx.left(valFix);
 
-      const result: Mx.Monax<{}, any> = Mx.leftMap(fn, left);
+      const result: Mx.Monax<Fix, any> = Mx.leftMap(fn, left);
 
       expect(Mx.isLeft(result)).toBe(true);
-      expect(Mx.getLeft(result as Mx.Left<{}>)).toBe(fixture);
+      expect(Mx.getLeft(result as Mx.Left<Fix>)).toBe(fixture);
       expect(fn).toHaveBeenCalledWith(valFix);
     });
     it('should skip a Right', () => {
@@ -303,7 +306,6 @@ describe('monax', () => {
       const result: Mx.Monax<{}, any> = Mx.flatMap(fn, right);
 
       expect(Mx.isRight(result)).toBe(false);
-      expect(Mx.getRight(result as Mx.Right<{}>)).toBeUndefined();
       if (Mx.isLeft(result))
         expect(Mx.getLeft(result)).toBe(fixture);
       expect(fn).not.toHaveBeenCalled();
@@ -396,7 +398,6 @@ describe('monax', () => {
       const result: Mx.Monax<any, {}> = Mx.leftFlatMap(fn, right);
 
       expect(Mx.isLeft(result)).toBe(false);
-      expect(Mx.getLeft(result as Mx.Left<{}>)).toBeUndefined();
       if (Mx.isRight(result))
         expect(Mx.getRight(result)).toBe(fixture);
       expect(fn).not.toHaveBeenCalled();
@@ -457,6 +458,61 @@ describe('monax', () => {
       expect(Mx.asyncLeftBind).toBe(Mx.asyncLeftFlatMap);
       expect(Mx.asyncErrBind).toBe(Mx.asyncLeftFlatMap);
       expect(Mx.asyncErrFlatMap).toBe(Mx.asyncLeftFlatMap);
+    });
+  });
+  describe('fork', () => {
+    it('should fork a Right', () => {
+      const vFn: (v: any) => void = jest.fn();
+      const eFn: (v: any) => void = jest.fn();
+      const valFix = {};
+      const right = Mx.right(valFix);
+
+      Mx.fork(vFn, eFn, right);
+
+      expect(vFn).toHaveBeenCalledWith(valFix);
+      expect(eFn).not.toHaveBeenCalled();
+    });
+    it('should fork a Left', () => {
+      const vFn: (v: any) => void = jest.fn();
+      const eFn: (v: any) => void = jest.fn();
+      const valFix = {};
+      const left = Mx.left(valFix);
+
+      Mx.fork(vFn, eFn, left);
+
+      expect(eFn).toHaveBeenCalledWith(valFix);
+      expect(vFn).not.toHaveBeenCalled();
+    });
+  });
+  describe('cata', () => {
+    it('should cata a Right', () => {
+      const vFn: (v: any) => Fix = jest.fn()
+        .mockImplementation(() => fixture);
+      const eFn: (v: any) => Fix = jest.fn();
+      const valFix = {};
+      const right = Mx.right(valFix);
+
+      const result: {} = Mx.cata(vFn, eFn, right);
+
+      expect(vFn).toHaveBeenCalledWith(valFix);
+      expect(result).toBe(fixture);
+      expect(eFn).not.toHaveBeenCalled();
+    });
+    it('should cata a Left', () => {
+      const vFn: (v: any) => Fix = jest.fn();
+      const eFn: (v: any) => Fix = jest.fn()
+        .mockImplementation(() => fixture);
+      const valFix = {};
+      const left = Mx.left(valFix);
+
+      const result: {} = Mx.cata(vFn, eFn, left);
+
+      expect(eFn).toHaveBeenCalledWith(valFix);
+      expect(result).toBe(fixture);
+      expect(vFn).not.toHaveBeenCalled();
+    });
+    it('has aliases', () => {
+      expect(Mx.ifValElse).toBe(Mx.cata);
     })
   });
 });

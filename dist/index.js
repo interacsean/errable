@@ -1,4 +1,17 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * todo:
@@ -42,6 +55,13 @@ exports.isRight = isRight;
 exports.isVal = isRight;
 exports.getRight = function (r) { return r; };
 exports.getVal = exports.getRight;
+var MxErr = /** @class */ (function (_super) {
+    __extends(MxErr, _super);
+    function MxErr() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    return MxErr;
+}(Error));
 function left(e) {
     var err = e instanceof Error
         ? e
@@ -182,12 +202,35 @@ function awaitLeftMap(fn, m) {
 exports.awaitLeftMap = awaitLeftMap;
 exports.withAwaitedErr = awaitLeftMap;
 exports.awaitErrMap = awaitLeftMap;
-//   Promise.prototype.cata = function<T, E, R>(
-//     rejFn: (rejVal: E | any) => R,
-//     resFn: (resVal: T) => R,
-//   ): Pnd<never, R> {
-//     return this.then(resFn, rejFn);
-//   };
+/**
+ * Fork
+ * @param fn Function to evaluate if a Right/Val
+ * @param fn Function to evaluate if a Left/Err
+ * @param m  Monad to evaluate for execution
+ * @return Monad
+ */
+function _fork(vFn, eFn, m) {
+    isRight(m) ? vFn(exports.getRight(m)) : eFn(exports.getLeft(m));
+}
+function fork(vFn, eFn, m) {
+    return curry(_fork).apply(this, arguments);
+}
+exports.fork = fork;
+/**
+ * Cata
+ * @param fn Function to evaluate if a Right/Val
+ * @param fn Function to evaluate if a Left/Err
+ * @param m  Monad to evaluate for execution
+ * @return Promise<Monad>
+ */
+function _cata(vFn, eFn, m) {
+    return isRight(m) ? vFn(exports.getRight(m)) : eFn(exports.getLeft(m));
+}
+function cata(vFn, eFn, m) {
+    return curry(_cata).apply(this, arguments);
+}
+exports.cata = cata;
+exports.ifValElse = cata;
 //   Promise.prototype.tap = function<E, T>(fn: (val: T) => void): Pnd<E, T> {
 //     return this.then((val: T): T => {
 //       fn(val);

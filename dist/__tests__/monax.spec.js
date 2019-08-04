@@ -14,7 +14,7 @@ function createPromise(resOrRej, val) {
     });
 }
 describe('monax', function () {
-    var fixture = {};
+    var fixture = { fix: 'ture' };
     describe('right', function () {
         it('should be recognised by isRight', function () {
             var result = Mx.right(fixture);
@@ -99,6 +99,7 @@ describe('monax', function () {
         it('should create left on undefined', function () {
             var result = Mx.fromNull(undefined, 0);
             expect(Mx.isRight(result)).toBe(false);
+            expect(Mx.getErr(result)).toBe(0);
         });
     });
     describe('fromPromise factory', function () {
@@ -135,7 +136,7 @@ describe('monax', function () {
             var left = Mx.left(valFix);
             var result = Mx.map(fn, left);
             expect(Mx.isRight(result)).toBe(false);
-            expect(Mx.getRight(result)).toBeUndefined();
+            expect(Mx.getLeft(result)).toBe(valFix);
             expect(fn).not.toHaveBeenCalled();
         });
         it('should be curried', function () {
@@ -249,7 +250,6 @@ describe('monax', function () {
             var right = Mx.left(fixture);
             var result = Mx.flatMap(fn, right);
             expect(Mx.isRight(result)).toBe(false);
-            expect(Mx.getRight(result)).toBeUndefined();
             if (Mx.isLeft(result))
                 expect(Mx.getLeft(result)).toBe(fixture);
             expect(fn).not.toHaveBeenCalled();
@@ -322,7 +322,6 @@ describe('monax', function () {
             var right = Mx.right(fixture);
             var result = Mx.leftFlatMap(fn, right);
             expect(Mx.isLeft(result)).toBe(false);
-            expect(Mx.getLeft(result)).toBeUndefined();
             if (Mx.isRight(result))
                 expect(Mx.getRight(result)).toBe(fixture);
             expect(fn).not.toHaveBeenCalled();
@@ -372,6 +371,53 @@ describe('monax', function () {
             expect(Mx.asyncLeftBind).toBe(Mx.asyncLeftFlatMap);
             expect(Mx.asyncErrBind).toBe(Mx.asyncLeftFlatMap);
             expect(Mx.asyncErrFlatMap).toBe(Mx.asyncLeftFlatMap);
+        });
+    });
+    describe('fork', function () {
+        it('should fork a Right', function () {
+            var vFn = jest.fn();
+            var eFn = jest.fn();
+            var valFix = {};
+            var right = Mx.right(valFix);
+            Mx.fork(vFn, eFn, right);
+            expect(vFn).toHaveBeenCalledWith(valFix);
+            expect(eFn).not.toHaveBeenCalled();
+        });
+        it('should fork a Left', function () {
+            var vFn = jest.fn();
+            var eFn = jest.fn();
+            var valFix = {};
+            var left = Mx.left(valFix);
+            Mx.fork(vFn, eFn, left);
+            expect(eFn).toHaveBeenCalledWith(valFix);
+            expect(vFn).not.toHaveBeenCalled();
+        });
+    });
+    describe('cata', function () {
+        it('should cata a Right', function () {
+            var vFn = jest.fn()
+                .mockImplementation(function () { return fixture; });
+            var eFn = jest.fn();
+            var valFix = {};
+            var right = Mx.right(valFix);
+            var result = Mx.cata(vFn, eFn, right);
+            expect(vFn).toHaveBeenCalledWith(valFix);
+            expect(result).toBe(fixture);
+            expect(eFn).not.toHaveBeenCalled();
+        });
+        it('should cata a Left', function () {
+            var vFn = jest.fn();
+            var eFn = jest.fn()
+                .mockImplementation(function () { return fixture; });
+            var valFix = {};
+            var left = Mx.left(valFix);
+            var result = Mx.cata(vFn, eFn, left);
+            expect(eFn).toHaveBeenCalledWith(valFix);
+            expect(result).toBe(fixture);
+            expect(vFn).not.toHaveBeenCalled();
+        });
+        it('has aliases', function () {
+            expect(Mx.ifValElse).toBe(Mx.cata);
         });
     });
 });

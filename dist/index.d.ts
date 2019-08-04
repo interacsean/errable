@@ -96,4 +96,11 @@ declare function awaitLeftMap<E, T, F>(fn: ((v: E) => Promise<F>)): ((m: Monax<E
 export { awaitLeftMap };
 export declare const withAwaitedErr: typeof awaitLeftMap;
 export declare const awaitErrMap: typeof awaitLeftMap;
+declare function fork<E, T>(vFn: ((v: T) => any), eFn: ((e: E) => any), m: Monax<E, T>): void;
+declare function fork<E, T>(vFn: ((v: T) => any), eFn: ((e: E) => any)): ((m: Monax<E, T>) => void);
+export { fork };
+declare function cata<E, T, R>(vFn: ((v: T) => R), eFn: ((e: E) => R), m: Monax<E, T>): R;
+declare function cata<E, T, R>(vFn: ((v: T) => R), eFn: ((e: E) => R)): ((m: Monax<E, T>) => R);
+export { cata };
+export declare const ifValElse: typeof cata;
 //# sourceMappingURL=index.d.ts.map
