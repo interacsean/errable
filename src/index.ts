@@ -1,7 +1,7 @@
 /**
  * todo:
  *  - Update README propers
- *  - compat with left(undefined) / Optional / Errable type (aliases)
+ *  - compat with err(undefined) / Optional / Errable type (aliases)
  *  - monadic aliases to come from a different file
  *  - chain – class that aliases all functions to / non-promise .thens
  *  - + fork (like cata but must returns void)
@@ -9,7 +9,7 @@
  *     - the function for a val would be optional - if omitted, is `id`
  *     - this may make overloads complex as 2nd arg could be function or monax
  *  - + tap/dblTap
- *  - Config option for `type Optional<T> = T | undefined` and `type Monax<SomeErrType, T> = T | Error<type>`
+ *  - Config option for `type Optional<T> = T | undefined` and `type Errable<SomeErrType, T> = T | Error<type>`
  */
 const curry = (fn: Function, ...args: any[]) =>
   (fn.length <= args.length)
@@ -22,82 +22,83 @@ export class Err<E> extends Error {
   constructor(message: string, data?: E) {
     super(message);
     this.data = data !== undefined ? data : ({} as E);
+    Object.setPrototypeOf(this, Err.prototype);
   }
 }
-export type Left<E> = Err<E>;
 
 export type Val<T> = T;
-export type Right<E> = Val<E>;
-
-export type Monax<E, T> = Err<E> | Val<T>
-export type Errable<E, T> = Monax<E, T>;
+export type Errable<E, T> = Err<E> | Val<T>;
 
 // todo: write docs and tests
 export type Optional<T> = T | undefined;
-
 export type Nullable<T> = T | null;
+export type Valable<E, T> = Err<E> | Val<T> | Optional<T> | Nullable<T>;
 
 /*************************
  *** Monax constructors **
  ************************/
 
-export function right<T>(v: T): Val<T> {
+export function val<T>(v: T): Val<T> {
   return v;
 }
-export const val = right;
 
-export function isRight<T>(m: Monax<any, T>): m is Val<T> {
-  return !(m instanceof Error);
-  // && !isEmpty(m) && !isUndefined(m)
+export function isVal<T>(m: Errable<any, T> | Nullable<T> | Optional<T>): m is Val<T> {
+  return !(m instanceof Error || m === null || m === undefined);
 }
-export const isVal = isRight;
+// todo: isNotErr... etc
+export function notErr<T>(m: Errable<any, T>): m is Val<T> {
+  return !(m instanceof Error);
+}
+export function notUndefined<T>(m: Optional<T>): m is T {
+  return m !== undefined;
+}
+export function notNull<T>(m: Nullable<T>): m is T {
+  return m !== null;
+}
 
-export const getRight = <T>(r: Val<T>): T => r;
-export const getVal = getRight;
+// aka `id`
+export const getVal = <T>(r: Val<T>): T => r;
 
-export function left<E>(e: E): Err<E> {
+export function err<E>(e: E): Err<E> {
   if (e instanceof Err) return e;
   else if (e instanceof Error) return new Err(e.message);
   else if (typeof e === 'string') return new Err(e, e);
   return new Err('', e);
 }
-export const err = left;
 
-export function isLeft<E>(m: Monax<E, any>): m is Err<E> {
-  return !isRight(m);
+export function isErr<E>(m: Errable<E, any>): m is Err<E> {
+  return (m instanceof Err);
 }
-export const isErr = isLeft;
 
-export const getLeft = <E>(l: Err<E>): E => l.data;
-export const getErr = getLeft;
+export const getErr = <E>(l: Err<E>): E => l.data;
 
 // todo: write docs and tests
-export function isUndefined<T>(optional: Optional<T>): optional is undefined {
-  return optional === undefined;
+export function isUndefined<T>(opt: Optional<T>): opt is undefined {
+  return opt === undefined;
 }
 
-export function fromFalsey<E, T>(value: T | undefined | null, ifFalsey: E): Monax<E, T> {
+export function fromFalsey<E, T>(value: T | undefined | null, ifFalsey: E): Errable<E, T> {
   return Boolean(value) && value !== undefined && value !== null
-    ? right(value)
-    : left(ifFalsey);
+    ? val(value)
+    : err(ifFalsey);
 }
 
-export function fromNull<E, T>(value: T | undefined | null, ifNully: E): Monax<E, T> {
+export function fromNull<E, T>(value: T | undefined | null, ifNully: E): Errable<E, T> {
   return value !== undefined && value !== null
-    ? right(value)
-    : left(ifNully);
+    ? val(value)
+    : err(ifNully);
 }
 
-export function fromPromise<T>(promise: Promise<T>): Promise<Monax<any, T>> {
+export function fromPromise<T>(promise: Promise<T>): Promise<Errable<any, T>> {
   return promise.then(
-    right,
-    left,
+    val,
+    err,
   );
 }
 
 // todo: write docs and tests
 // /!\ inconsistent with other fromFactory function, in that this is curried
-export function fromOptional<E, T>(error: E): (opt: Optional<T>) => Monax<E, T> {
+export function fromOptional<E, T>(error: E): (opt: Optional<T>) => Errable<E, T> {
   return (optional: Optional<T>) => isUndefined(optional) ? err(error) : optional;
 }
 
@@ -105,118 +106,111 @@ export function fromOptional<E, T>(error: E): (opt: Optional<T>) => Monax<E, T> 
  *** Monax transformation functions  **
  *************************************/
 
-function _flatMap<E, T, R>(retProm: false, fn: ((v: T) => Monax<E, R>), m: Monax<E, T>): Monax<E, R>;
-function _flatMap<E, T, R>(retProm: true, fn: ((v: T) => Promise<Monax<E, R>>), m: Monax<E, T>): Promise<Monax<E, R>>;
-function _flatMap<E, T, R>(
+function _ifNotErr<E, T, R>(retProm: false, fn: ((v: T) => Errable<E, R>), m: Errable<E, T>): Errable<E, R>;
+function _ifNotErr<E, T, R>(retProm: true, fn: ((v: T) => Promise<Errable<E, R>>), m: Errable<E, T>): Promise<Errable<E, R>>;
+function _ifNotErr<E, T, R>(
   retProm: boolean,
-  fn: ((v: T) => Monax<E, R>) | ((v: T) => Promise<Monax<E, R>>),
-  m: Monax<E, T>,
+  fn: ((v: T) => Errable<E, R>) | ((v: T) => Promise<Errable<E, R>>),
+  m: Errable<E, T>,
 ) {
-  return isRight(m)
-    ? fn(getRight(m))
+  return notErr(m)
+    ? fn(getVal(m))
     : (retProm
       ? Promise.resolve(m)
       : m);
 }
 
 
-
 /**
- * FlatMap
+ * ifNotErr (flatMap)
  *
  * @param fn Function to map if a Right/Val
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function flatMap<E, T, R>(fn: ((v: T) => Monax<E, R>), m: Monax<E, T>): Monax<E, R>;
-function flatMap<E, T, R>(fn: ((v: T) => Monax<E, R>)): ((m: Monax<E, T>) => Monax<E, R>);
-function flatMap<E, T, R>(this: any, fn: ((v: T) => Monax<E, R>), m?: Monax<E, T>) {
-  return curry(_flatMap)(false).apply(this, arguments);
+function ifNotErr<E, T, R>(fn: ((v: T) => Errable<E, R>), m: Errable<E, T>): Errable<E, R>;
+function ifNotErr<E, T, R>(fn: ((v: T) => Errable<E, R>)): ((m: Errable<E, T>) => Errable<E, R>);
+function ifNotErr<E, T, R>(this: any, fn: ((v: T) => Errable<E, R>), m?: Errable<E, T>) {
+  return curry(_ifNotErr)(false).apply(this, arguments);
 }
 
-export { flatMap }
-
-export const ifVal = flatMap;
-export const bind = flatMap;
+export { ifNotErr }
 
 /**
- * AsyncFlatMap
+ * ifNotErrAsync (flatMapAsync)
  *
  * @param fn Function to map if a Right/Val
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function asyncFlatMap<E, T, R>(fn: ((v: T) => Promise<Monax<E, R>>), m: Monax<E, T>): Promise<Monax<E, R>>;
-function asyncFlatMap<E, T, R>(fn: ((v: T) => Promise<Monax<E, R>>)): ((m: Monax<E, T>) => Promise<Monax<E, R>>);
-function asyncFlatMap<E, T, R>(this: any, fn: ((v: T) => Promise<Monax<E, R>>), m?: Monax<E, T>) {
-  return curry(_flatMap)(true).apply(this, arguments);
+function ifNotErrAsync<E, T, R>(fn: ((v: T) => Promise<Errable<E, R>>), m: Errable<E, T>): Promise<Errable<E, R>>;
+function ifNotErrAsync<E, T, R>(fn: ((v: T) => Promise<Errable<E, R>>)): ((m: Errable<E, T>) => Promise<Errable<E, R>>);
+function ifNotErrAsync<E, T, R>(this: any, fn: ((v: T) => Promise<Errable<E, R>>), m?: Errable<E, T>) {
+  return curry(_ifNotErr)(true).apply(this, arguments);
 }
 
-export { asyncFlatMap }
-
-export const asyncIfVal = asyncFlatMap;
-export const asyncBind = asyncFlatMap;
+export { ifNotErrAsync }
 
 
 
 /**
- * Map
+ * withNotErr (map)
  *
  * @param fn Function to map if a Right/Val
  * @param m Monad to evaluate for execution
  * @return Monad
  */
 
-function _map<E, T, R>(fn: (v: T) => R, m: Monax<E, T>): Monax<E, R> {
-  return isRight(m) ? right(fn(getRight(m))) : m as Monax<E, R>;
+// todo: mv toNotErr
+
+function _withNotErr<E, T, R>(fn: (v: T) => R, m: Errable<E, T>): Errable<E, R> {
+  return notErr<T>(m) ? val(fn(getVal(m))) : m as Errable<E, R>;
 }
 
-function map<E, T, R>(fn: ((v: T) => R), m: Monax<E, T>): Monax<E, R>;
-function map<E, T, R>(fn: ((v: T) => R)): ((m: Monax<E, T>) => Monax<E, R>);
-function map<E, T, R>(this: any, fn: ((v: T) => R), m?: Monax<E, T>) {
-  return curry(_map).apply(this, arguments);
+function withNotErr<E, T, R>(fn: ((v: T) => R), m: Errable<E, T>): Errable<E, R>;
+function withNotErr<E, T, R>(fn: ((v: T) => R)): ((m: Errable<E, T>) => Errable<E, R>);
+function withNotErr<E, T, R>(this: any, fn: ((v: T) => R), m?: Errable<E, T>) {
+  return curry(_withNotErr).apply(this, arguments);
 }
 
-export { map };
-
-export const withVal = map;
+export { withNotErr };
 
 
 
 /**
- * awaitMap
+ * withNotErrAsync (mapAsync)
  * @param fn Promise-returning-function to map if a Right/Val
  * @param m  Monad to evaluate for execution
  * @return Promise<Monad>
  */
 
-function _awaitMap<E, T, R>(fn: (v: T) => Promise<R>, m: Monax<E, T>): Promise<Monax<E, R>> {
-  return isRight(m)
-    ? fn(getRight(m)).then(right)
-    : Promise.resolve(m) as Promise<Monax<E, R>>;
+function _withNotErrAsync<E, T, R>(fn: (v: T) => Promise<R>, m: Errable<E, T>): Promise<Errable<E, R>> {
+  return notErr<T>(m)
+    ? fn(getVal(m)).then(val)
+    : Promise.resolve(m) as Promise<Errable<E, R>>;
 }
 
-function awaitMap<E, T, R>(fn: ((v: T) => Promise<R>), m: Monax<E, T>): Promise<Monax<E, R>>;
-function awaitMap<E, T, R>(fn: ((v: T) => Promise<R>)): ((m: Monax<E, T>) => Promise<Monax<E, R>>);
-function awaitMap<E, T, R>(this: any, fn: ((v: T) => Promise<R>), m?: Monax<E, T>) {
-  return curry(_awaitMap).apply(this, arguments);
+function withNotErrAsync<E, T, R>(fn: ((v: T) => Promise<R>), m: Errable<E, T>): Promise<Errable<E, R>>;
+function withNotErrAsync<E, T, R>(fn: ((v: T) => Promise<R>)): ((m: Errable<E, T>) => Promise<Errable<E, R>>);
+function withNotErrAsync<E, T, R>(this: any, fn: ((v: T) => Promise<R>), m?: Errable<E, T>) {
+  return curry(_withNotErrAsync).apply(this, arguments);
 }
 
-export { awaitMap };
+export { withNotErrAsync };
 
-export const withAwaitedVal = awaitMap;
+export const withAwaitedVal = withNotErrAsync;
 
 
 
-function _leftFlatMap<E, T, F>(retProm: false, fn: ((e: E) => Monax<F, T>), m: Monax<E, T>): Monax<F, T>;
-function _leftFlatMap<E, T, F>(retProm: true, fn: ((e: E) => Promise<Monax<F, T>>), m: Monax<E, T>): Promise<Monax<F, T>>;
-function _leftFlatMap<E, T, F>(
+function _ifErr<E, T, F>(retProm: false, fn: ((e: E) => Errable<F, T>), m: Errable<E, T>): Errable<F, T>;
+function _ifErr<E, T, F>(retProm: true, fn: ((e: E) => Promise<Errable<F, T>>), m: Errable<E, T>): Promise<Errable<F, T>>;
+function _ifErr<E, T, F>(
   retProm: boolean,
-  fn: ((e: E) => Monax<F, T>) | ((e: E) => Promise<Monax<F, T>>),
-  m: Monax<E, T>,
+  fn: ((e: E) => Errable<F, T>) | ((e: E) => Promise<Errable<F, T>>),
+  m: Errable<E, T>,
 ) {
-  return isLeft(m)
-    ? fn(getLeft(m))
+  return isErr(m)
+    ? fn(getErr(m))
     : (retProm
       ? Promise.resolve(m)
       : m);
@@ -229,64 +223,53 @@ function _leftFlatMap<E, T, F>(
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function leftFlatMap<E, T, F>(fn: ((e: E) => Monax<F, T>), m: Monax<E, T>): Monax<F, T>;
-function leftFlatMap<E, T, F>(fn: ((e: E) => Monax<F, T>)): ((m: Monax<E, T>) => Monax<F, T>);
-function leftFlatMap<E, T, F>(this: any, fn: ((e: E) => Monax<F, T>), m?: Monax<E, T>) {
-  return curry(_leftFlatMap)(false).apply(this, arguments);
+function ifErr<E, T, F>(fn: ((e: E) => Errable<F, T>), m: Errable<E, T>): Errable<F, T>;
+function ifErr<E, T, F>(fn: ((e: E) => Errable<F, T>)): ((m: Errable<E, T>) => Errable<F, T>);
+function ifErr<E, T, F>(this: any, fn: ((e: E) => Errable<F, T>), m?: Errable<E, T>) {
+  return curry(_ifErr)(false).apply(this, arguments);
 }
 
-export { leftFlatMap }
+export { ifErr }
 
-export const ifErr = leftFlatMap;
-export const leftBind = leftFlatMap;
-export const errBind = leftFlatMap;
-export const errFlatMap = leftFlatMap;
 
 
 /**
- * AsyncLeftFlatMap
+ * ifErrAsync
  *
  * @param fn Function to map if a Left/Val
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function asyncLeftFlatMap<E, T, F>(fn: ((e: F) => Promise<Monax<F, T>>), m: Monax<E, T>): Promise<Monax<F, T>>;
-function asyncLeftFlatMap<E, T, F>(fn: ((e: F) => Promise<Monax<F, T>>)): ((m: Monax<E, T>) => Promise<Monax<F, T>>);
-function asyncLeftFlatMap<E, T, F>(this: any, fn: ((e: F) => Promise<Monax<F, T>>), m?: Monax<E, T>) {
-  return curry(_leftFlatMap)(true).apply(this, arguments);
+function ifErrAsync<E, T, F>(fn: ((e: F) => Promise<Errable<F, T>>), m: Errable<E, T>): Promise<Errable<F, T>>;
+function ifErrAsync<E, T, F>(fn: ((e: F) => Promise<Errable<F, T>>)): ((m: Errable<E, T>) => Promise<Errable<F, T>>);
+function ifErrAsync<E, T, F>(this: any, fn: ((e: F) => Promise<Errable<F, T>>), m?: Errable<E, T>) {
+  return curry(_ifErr)(true).apply(this, arguments);
 }
 
-export { asyncLeftFlatMap }
-
-export const asyncIfErr = asyncLeftFlatMap;
-export const asyncLeftBind = asyncLeftFlatMap;
-export const asyncErrBind = asyncLeftFlatMap;
-export const asyncErrFlatMap = asyncLeftFlatMap;
+export { ifErrAsync }
 
 
 
 /**
- * LeftMap
+ * withErr (leftMap)
  *
  * @param fn Function to map if a Left/Err
  * @param m Monad to evaluate for execution
  * @return Monad
  */
 
-function _leftMap<E, T, F>(fn: (v: E) => F, m: Monax<E, T>): Monax<F, T> {
-  return isLeft(m) ? left(fn(getLeft(m))) : m as Monax<F, T>;
+function _withErr<E, T, F>(fn: (v: E) => F, m: Errable<E, T>): Errable<F, T> {
+  return isErr(m) ? err(fn(getErr(m))) : m as Errable<F, T>;
 }
 
-function leftMap<E, T, F>(fn: ((v: E) => F), m: Monax<E, T>): Monax<F, T>;
-function leftMap<E, T, F>(fn: ((v: E) => F)): ((m: Monax<E, T>) => Monax<F, T>);
-function leftMap<E, T, F>(this: any, fn: ((v: E) => F), m?: Monax<E, T>) {
-  return curry(_leftMap).apply(this, arguments);
+function withErr<E, T, F>(fn: ((v: E) => F), m: Errable<E, T>): Errable<F, T>;
+function withErr<E, T, F>(fn: ((v: E) => F)): ((m: Errable<E, T>) => Errable<F, T>);
+function withErr<E, T, F>(this: any, fn: ((v: E) => F), m?: Errable<E, T>) {
+  return curry(_withErr).apply(this, arguments);
 }
 
-export { leftMap };
+export { withErr };
 
-export const withErr = leftMap;
-export const errMap = leftMap;
 
 /**
  * AwaitLeftMap
@@ -295,29 +278,26 @@ export const errMap = leftMap;
  * @return Promise<Monad>
  */
 
-function _awaitLeftMap<E, T, F>(fn: (v: E) => Promise<F>, m: Monax<E, T>): Promise<Monax<F, T>> {
-  return isLeft(m)
-    ? fn(getLeft(m)).then(left)
-    : Promise.resolve(m) as Promise<Monax<F, T>>;
+function _withErrAsync<E, T, F>(fn: (v: E) => Promise<F>, m: Errable<E, T>): Promise<Errable<F, T>> {
+  return isErr(m)
+    ? fn(getErr(m)).then(err)
+    : Promise.resolve(m) as Promise<Errable<F, T>>;
 }
 
-function awaitLeftMap<E, T, F>(fn: ((v: E) => Promise<F>), m: Monax<E, T>): Promise<Monax<F, T>>;
-function awaitLeftMap<E, T, F>(fn: ((v: E) => Promise<F>)): ((m: Monax<E, T>) => Promise<Monax<F, T>>);
-function awaitLeftMap<E, T, F>(this: any, fn: ((v: E) => Promise<F>), m?: Monax<E, T>) {
-  return curry(_awaitLeftMap).apply(this, arguments);
+function withErrAsync<E, T, F>(fn: ((v: E) => Promise<F>), m: Errable<E, T>): Promise<Errable<F, T>>;
+function withErrAsync<E, T, F>(fn: ((v: E) => Promise<F>)): ((m: Errable<E, T>) => Promise<Errable<F, T>>);
+function withErrAsync<E, T, F>(this: any, fn: ((v: E) => Promise<F>), m?: Errable<E, T>) {
+  return curry(_withErrAsync).apply(this, arguments);
 }
 
-export { awaitLeftMap };
-
-export const withAwaitedErr = awaitLeftMap;
-export const awaitErrMap = awaitLeftMap;
+export { withErrAsync };
 
 
 
 /**
  * Fork
- * @param fn Function to evaluate if a Right/Val
- * @param fn Function to evaluate if a Left/Err
+ * @param vFn Function to evaluate if a Right/Val
+ * @param eFn Function to evaluate if a Left/Err
  * @param m  Monad to evaluate for execution
  * @return Monad
  */
@@ -325,25 +305,25 @@ export const awaitErrMap = awaitLeftMap;
 function _fork<E, T, R>(
   vFn: (v: T) => R,
   eFn: (e: E) => R,
-  m: Monax<E, T>,
+  m: Errable<E, T>,
 ): void {
-  isRight(m) ? vFn(getRight(m)) : eFn(getLeft(m))
+  notErr(m) ? vFn(getVal(m)) : eFn(getErr(m))
 }
 
 function fork<E, T>(
   vFn: ((v: T) => any),
   eFn: ((e: E) => any),
-  m: Monax<E, T>,
+  m: Errable<E, T>,
 ): void;
 function fork<E, T>(
   vFn: ((v: T) => any),
   eFn: ((e: E) => any),
-): ((m: Monax<E, T>) => void);
+): ((m: Errable<E, T>) => void);
 function fork<E, T>(
   this: any,
   vFn: ((v: T) => any),
   eFn: ((e: E) => any),
-  m?: Monax<E, T>,
+  m?: Errable<E, T>,
 ) {
   return curry(_fork).apply(this, arguments);
 }
@@ -353,34 +333,36 @@ export { fork };
 
 /**
  * Cata
- * @param fn Function to evaluate if a Right/Val
- * @param fn Function to evaluate if a Left/Err
+ * @param vFn Function to evaluate if a Right/Val
+ * @param eFn Function to evaluate if a Left/Err
  * @param m  Monad to evaluate for execution
  * @return Promise<Monad>
  */
 
+// todo: rename to standardise
+
 function _cata<E, T, R>(
   vFn: (v: T) => R,
   eFn: (e: E) => R,
-  m: Monax<E, T>,
+  m: Errable<E, T>,
 ): R {
-  return isRight(m) ? vFn(getRight(m)) : eFn(getLeft(m))
+  return notErr(m) ? vFn(getVal(m)) : eFn(getErr(m))
 }
 
 function cata<E, T, R>(
   vFn: ((v: T) => R),
   eFn: ((e: E) => R),
-  m: Monax<E, T>,
+  m: Errable<E, T>,
 ): R;
 function cata<E, T, R>(
   vFn: ((v: T) => R),
   eFn: ((e: E) => R),
-): ((m: Monax<E, T>) => R);
+): ((m: Errable<E, T>) => R);
 function cata<E, T, R>(
   this: any,
   vFn: ((v: T) => R),
   eFn: ((e: E) => R),
-  m?: Monax<E, T>,
+  m?: Errable<E, T>,
 ) {
   return curry(_cata).apply(this, arguments);
 }
@@ -392,49 +374,49 @@ export const ifValElse = cata;
 
 
 /**
- * Peak
+ * Peek
  *
- * @param fn Function that will peak inside the monad
+ * @param fn Function that will peek inside the monad
  * @param m Monad to evaluate for execution
  * @return Monad
  */
 
-function _peak<E, T>(fn: (m: Monax<E, T>) => void, m: Monax<E, T>): Monax<E, T> {
+function _peek<E, T>(fn: (m: Errable<E, T>) => void, m: Errable<E, T>): Errable<E, T> {
   fn(m);
   return m;
 }
 
-function peak<E, T>(fn: ((m: Monax<E, T>) => void), m: Monax<E, T>): Monax<E, T>;
-function peak<E, T>(fn: ((m: Monax<E, T>) => void)): ((m: Monax<E, T>) => Monax<E, T>);
-function peak<E, T>(this: any, fn: ((m: Monax<E, T>) => void), m?: Monax<E, T>) {
-  return curry(_peak).apply(this, arguments);
+function peek<E, T>(fn: ((m: Errable<E, T>) => void), m: Errable<E, T>): Errable<E, T>;
+function peek<E, T>(fn: ((m: Errable<E, T>) => void)): ((m: Errable<E, T>) => Errable<E, T>);
+function peek<E, T>(this: any, fn: ((m: Errable<E, T>) => void), m?: Errable<E, T>) {
+  return curry(_peek).apply(this, arguments);
 }
 
-export { peak };
+export { peek };
 
 
 /**
  * PeakVal;
  *
- * @param fn Function that will peak inside the monad
+ * @param fn Function that will peek inside the monad
  * @param m Monad to evaluate for execution
  * @return Monad
  */
 
-function _peakVal<E, T>(fn: (v: T) => void, m: Monax<E, T>): Monax<E, T> {
-  if (isRight(m)) fn(m);
+function _peekVal<E, T>(fn: (v: T) => void, m: Errable<E, T>): Errable<E, T> {
+  if (notErr(m)) fn(m);
   return m;
 }
 
-function peakVal<E, T>(fn: ((v: T) => void), m: Monax<E, T>): Monax<E, T>;
-function peakVal<E, T>(fn: ((v: T) => void)): ((m: Monax<E, T>) => Monax<E, T>);
-function peakVal<E, T>(this: any, fn: ((v: T) => void), m?: Monax<E, T>) {
-  return curry(_peakVal).apply(this, arguments);
+function peekVal<E, T>(fn: ((v: T) => void), m: Errable<E, T>): Errable<E, T>;
+function peekVal<E, T>(fn: ((v: T) => void)): ((m: Errable<E, T>) => Errable<E, T>);
+function peekVal<E, T>(this: any, fn: ((v: T) => void), m?: Errable<E, T>) {
+  return curry(_peekVal).apply(this, arguments);
 }
 
-export { peakVal };
+export { peekVal };
 
 // todo: write docs and tests
-export function recover<E, T>(fallbackVal: T, m: Monax<E, T>): T {
+export function recover<E, T>(fallbackVal: T, m: Errable<E, T>): T {
   return isErr(m) ? fallbackVal : m;
 }

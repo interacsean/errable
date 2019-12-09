@@ -16,7 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * todo:
  *  - Update README propers
- *  - compat with left(undefined) / Emptable / Errable type (aliases)
+ *  - compat with err(undefined) / Optional / Errable type (aliases)
  *  - monadic aliases to come from a different file
  *  - chain – class that aliases all functions to / non-promise .thens
  *  - + fork (like cata but must returns void)
@@ -24,7 +24,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *     - the function for a val would be optional - if omitted, is `id`
  *     - this may make overloads complex as 2nd arg could be function or monax
  *  - + tap/dblTap
- *  - Config option for `type Optional<T> = T | undefined` and `type Monax<SomeErrType, T> = T | Error<type>`
+ *  - Config option for `type Optional<T> = T | undefined` and `type Errable<SomeErrType, T> = T | Error<type>`
  */
 var curry = function (fn) {
     var args = [];
@@ -40,177 +40,184 @@ var curry = function (fn) {
         return curry.apply(void 0, [fn].concat(args, more));
     };
 };
+var Err = /** @class */ (function (_super) {
+    __extends(Err, _super);
+    function Err(message, data) {
+        var _this = _super.call(this, message) || this;
+        _this.data = data !== undefined ? data : {};
+        Object.setPrototypeOf(_this, Err.prototype);
+        return _this;
+    }
+    return Err;
+}(Error));
+exports.Err = Err;
 /*************************
  *** Monax constructors **
  ************************/
-function right(v) {
+function val(v) {
     return v;
 }
-exports.right = right;
-exports.val = right;
-function isRight(m) {
+exports.val = val;
+function isVal(m) {
+    return !(m instanceof Error || m === null || m === undefined);
+}
+exports.isVal = isVal;
+// todo: isNotErr... etc
+function notErr(m) {
     return !(m instanceof Error);
 }
-exports.isRight = isRight;
-exports.isVal = isRight;
-exports.getRight = function (r) { return r; };
-exports.getVal = exports.getRight;
-var MxErr = /** @class */ (function (_super) {
-    __extends(MxErr, _super);
-    function MxErr() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    return MxErr;
-}(Error));
-function left(e) {
-    var err = e instanceof Error
-        ? e
-        : Error(typeof e === 'string' ? e : undefined);
-    // todo: custom error (MonadError)
-    // @ts-ignore
-    err.data = e;
-    return err;
+exports.notErr = notErr;
+function notUndefined(m) {
+    return m !== undefined;
 }
-exports.left = left;
-exports.err = left;
-function isLeft(m) {
-    return !isRight(m);
+exports.notUndefined = notUndefined;
+function notNull(m) {
+    return m !== null;
 }
-exports.isLeft = isLeft;
-exports.isErr = isLeft;
-exports.getLeft = function (l) { return l.data; };
-exports.getErr = exports.getLeft;
-function fromFalsey(val, ifFalsey) {
-    return val !== undefined && val !== null && val !== false
-        ? right(val)
-        : left(ifFalsey);
+exports.notNull = notNull;
+// aka `id`
+exports.getVal = function (r) { return r; };
+function err(e) {
+    if (e instanceof Err)
+        return e;
+    else if (e instanceof Error)
+        return new Err(e.message);
+    else if (typeof e === 'string')
+        return new Err(e, e);
+    return new Err('', e);
+}
+exports.err = err;
+function isErr(m) {
+    return (m instanceof Err);
+}
+exports.isErr = isErr;
+exports.getErr = function (l) { return l.data; };
+// todo: write docs and tests
+function isUndefined(opt) {
+    return opt === undefined;
+}
+exports.isUndefined = isUndefined;
+function fromFalsey(value, ifFalsey) {
+    return Boolean(value) && value !== undefined && value !== null
+        ? val(value)
+        : err(ifFalsey);
 }
 exports.fromFalsey = fromFalsey;
-function fromNull(val, ifNully) {
-    return val !== undefined && val !== null
-        ? right(val)
-        : left(ifNully);
+function fromNull(value, ifNully) {
+    return value !== undefined && value !== null
+        ? val(value)
+        : err(ifNully);
 }
 exports.fromNull = fromNull;
 function fromPromise(promise) {
-    return promise.then(right, left);
+    return promise.then(val, err);
 }
 exports.fromPromise = fromPromise;
-function _flatMap(retProm, fn, m) {
-    return isRight(m)
-        ? fn(exports.getRight(m))
+// todo: write docs and tests
+// /!\ inconsistent with other fromFactory function, in that this is curried
+function fromOptional(error) {
+    return function (optional) { return isUndefined(optional) ? err(error) : optional; };
+}
+exports.fromOptional = fromOptional;
+function _ifNotErr(retProm, fn, m) {
+    return notErr(m)
+        ? fn(exports.getVal(m))
         : (retProm
             ? Promise.resolve(m)
             : m);
 }
-function flatMap(fn, m) {
-    return curry(_flatMap)(false).apply(this, arguments);
+function ifNotErr(fn, m) {
+    return curry(_ifNotErr)(false).apply(this, arguments);
 }
-exports.flatMap = flatMap;
-exports.ifVal = flatMap;
-exports.bind = flatMap;
-function asyncFlatMap(fn, m) {
-    return curry(_flatMap)(true).apply(this, arguments);
+exports.ifNotErr = ifNotErr;
+function ifNotErrAsync(fn, m) {
+    return curry(_ifNotErr)(true).apply(this, arguments);
 }
-exports.asyncFlatMap = asyncFlatMap;
-exports.asyncIfVal = asyncFlatMap;
-exports.asyncBind = asyncFlatMap;
+exports.ifNotErrAsync = ifNotErrAsync;
 /**
- * Map
+ * withNotErr (map)
  *
  * @param fn Function to map if a Right/Val
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function _map(fn, m) {
-    return isRight(m) ? right(fn(exports.getRight(m))) : m;
+// todo: mv toNotErr
+function _withNotErr(fn, m) {
+    return notErr(m) ? val(fn(exports.getVal(m))) : m;
 }
-function map(fn, m) {
-    return curry(_map).apply(this, arguments);
+function withNotErr(fn, m) {
+    return curry(_withNotErr).apply(this, arguments);
 }
-exports.map = map;
-exports.withVal = map;
+exports.withNotErr = withNotErr;
 /**
- * awaitMap
+ * withNotErrAsync (mapAsync)
  * @param fn Promise-returning-function to map if a Right/Val
  * @param m  Monad to evaluate for execution
  * @return Promise<Monad>
  */
-function _awaitMap(fn, m) {
-    return isRight(m)
-        ? fn(exports.getRight(m)).then(right)
+function _withNotErrAsync(fn, m) {
+    return notErr(m)
+        ? fn(exports.getVal(m)).then(val)
         : Promise.resolve(m);
 }
-function awaitMap(fn, m) {
-    return curry(_awaitMap).apply(this, arguments);
+function withNotErrAsync(fn, m) {
+    return curry(_withNotErrAsync).apply(this, arguments);
 }
-exports.awaitMap = awaitMap;
-exports.withAwaitedVal = awaitMap;
-function _leftFlatMap(retProm, fn, m) {
-    return isLeft(m)
-        ? fn(exports.getLeft(m))
+exports.withNotErrAsync = withNotErrAsync;
+exports.withAwaitedVal = withNotErrAsync;
+function _ifErr(retProm, fn, m) {
+    return isErr(m)
+        ? fn(exports.getErr(m))
         : (retProm
             ? Promise.resolve(m)
             : m);
 }
-function leftFlatMap(fn, m) {
-    return curry(_leftFlatMap)(false).apply(this, arguments);
+function ifErr(fn, m) {
+    return curry(_ifErr)(false).apply(this, arguments);
 }
-exports.leftFlatMap = leftFlatMap;
-exports.ifErr = leftFlatMap;
-exports.leftBind = leftFlatMap;
-exports.errBind = leftFlatMap;
-exports.errFlatMap = leftFlatMap;
-function asyncLeftFlatMap(fn, m) {
-    return curry(_leftFlatMap)(true).apply(this, arguments);
+exports.ifErr = ifErr;
+function ifErrAsync(fn, m) {
+    return curry(_ifErr)(true).apply(this, arguments);
 }
-exports.asyncLeftFlatMap = asyncLeftFlatMap;
-exports.asyncIfErr = asyncLeftFlatMap;
-exports.asyncLeftBind = asyncLeftFlatMap;
-exports.asyncErrBind = asyncLeftFlatMap;
-exports.asyncErrFlatMap = asyncLeftFlatMap;
+exports.ifErrAsync = ifErrAsync;
 /**
- * LeftMap
+ * withErr (leftMap)
  *
  * @param fn Function to map if a Left/Err
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function _leftMap(fn, m) {
-    return isLeft(m) ? left(fn(exports.getLeft(m))) : m;
+function _withErr(fn, m) {
+    return isErr(m) ? err(fn(exports.getErr(m))) : m;
 }
-function leftMap(fn, m) {
-    return curry(_leftMap).apply(this, arguments);
+function withErr(fn, m) {
+    return curry(_withErr).apply(this, arguments);
 }
-exports.leftMap = leftMap;
-exports.withErr = leftMap;
-exports.errMap = leftMap;
+exports.withErr = withErr;
 /**
  * AwaitLeftMap
  * @param fn Promise-returning-function to map if a Right/Val
  * @param m  Monad to evaluate for execution
  * @return Promise<Monad>
  */
-function _awaitLeftMap(fn, m) {
-    return isLeft(m)
-        ? fn(exports.getLeft(m)).then(left)
+function _withErrAsync(fn, m) {
+    return isErr(m)
+        ? fn(exports.getErr(m)).then(err)
         : Promise.resolve(m);
 }
-function awaitLeftMap(fn, m) {
-    return curry(_awaitLeftMap).apply(this, arguments);
+function withErrAsync(fn, m) {
+    return curry(_withErrAsync).apply(this, arguments);
 }
-exports.awaitLeftMap = awaitLeftMap;
-exports.withAwaitedErr = awaitLeftMap;
-exports.awaitErrMap = awaitLeftMap;
+exports.withErrAsync = withErrAsync;
 /**
  * Fork
- * @param fn Function to evaluate if a Right/Val
- * @param fn Function to evaluate if a Left/Err
+ * @param vFn Function to evaluate if a Right/Val
+ * @param eFn Function to evaluate if a Left/Err
  * @param m  Monad to evaluate for execution
  * @return Monad
  */
 function _fork(vFn, eFn, m) {
-    isRight(m) ? vFn(exports.getRight(m)) : eFn(exports.getLeft(m));
+    notErr(m) ? vFn(exports.getVal(m)) : eFn(exports.getErr(m));
 }
 function fork(vFn, eFn, m) {
     return curry(_fork).apply(this, arguments);
@@ -218,45 +225,54 @@ function fork(vFn, eFn, m) {
 exports.fork = fork;
 /**
  * Cata
- * @param fn Function to evaluate if a Right/Val
- * @param fn Function to evaluate if a Left/Err
+ * @param vFn Function to evaluate if a Right/Val
+ * @param eFn Function to evaluate if a Left/Err
  * @param m  Monad to evaluate for execution
  * @return Promise<Monad>
  */
+// todo: rename to standardise
 function _cata(vFn, eFn, m) {
-    return isRight(m) ? vFn(exports.getRight(m)) : eFn(exports.getLeft(m));
+    return notErr(m) ? vFn(exports.getVal(m)) : eFn(exports.getErr(m));
 }
 function cata(vFn, eFn, m) {
     return curry(_cata).apply(this, arguments);
 }
 exports.cata = cata;
 exports.ifValElse = cata;
-//   Promise.prototype.tap = function<E, T>(fn: (val: T) => void): Pnd<E, T> {
-//     return this.then((val: T): T => {
-//       fn(val);
-//       return val;
-//     });
-//   };
-//   Promise.prototype.doubleTap = function<E, T>(fn: (rejVal: E | any | null, resVal: T | null, isResolved?: boolean) => void): Pnd<E, T> {
-//     return this.then(
-//       (resVal: T): T => {
-//         fn(null, resVal, true);
-//         return resVal;
-//       },
-//       (rejVal: E): Pnd<E, never> => {
-//         fn(rejVal, null, false);
-//         return Promise.reject(rejVal);
-//       },
-//     );
-//   };
-//   Promise.prototype.bimap = function<T, E, F, R>(
-//     rejFn: (rejVal: E | any) => F,
-//     resFn: (resVal: T) => R,
-//   ): Pnd<F, R> {
-//     return this.then(resFn, (e: E | any): Pnd<F, never> => Promise.reject(rejFn(e)));
-//   };
-//   Promise.prototype.recover = function<E, T>(fn: (rejVal: E | any) => T): Promise<T> {
-//     return this.catch(fn);
-//   };
-// }
+/**
+ * Peek
+ *
+ * @param fn Function that will peek inside the monad
+ * @param m Monad to evaluate for execution
+ * @return Monad
+ */
+function _peek(fn, m) {
+    fn(m);
+    return m;
+}
+function peek(fn, m) {
+    return curry(_peek).apply(this, arguments);
+}
+exports.peek = peek;
+/**
+ * PeakVal;
+ *
+ * @param fn Function that will peek inside the monad
+ * @param m Monad to evaluate for execution
+ * @return Monad
+ */
+function _peekVal(fn, m) {
+    if (notErr(m))
+        fn(m);
+    return m;
+}
+function peekVal(fn, m) {
+    return curry(_peekVal).apply(this, arguments);
+}
+exports.peekVal = peekVal;
+// todo: write docs and tests
+function recover(fallbackVal, m) {
+    return isErr(m) ? fallbackVal : m;
+}
+exports.recover = recover;
 //# sourceMappingURL=index.js.map

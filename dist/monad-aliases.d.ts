@@ -1,3 +1,22 @@
 import * as Mx from './index';
 export declare type Left<E> = Mx.Err<E>;
+export declare type Right<E> = Mx.Val<E>;
+export declare const right: typeof Mx.val;
+export declare const isRight: typeof Mx.notErr;
+export declare const getRight: <T>(r: T) => T;
+export declare const left: typeof Mx.err;
+export declare const getLeft: <E>(l: Mx.Err<E>) => E;
+export declare const isLeft: typeof Mx.isErr;
+export declare const flatMap: typeof Mx.ifNotErr;
+export declare const bind: typeof Mx.ifNotErr;
+export declare const flatMapAsync: typeof Mx.ifNotErrAsync;
+export declare const bindAsync: typeof Mx.ifNotErrAsync;
+export declare const map: typeof Mx.withNotErr;
+export declare const mapAsync: typeof Mx.withNotErrAsync;
+export declare const leftFlatMap: typeof Mx.ifErr;
+export declare const leftBind: typeof Mx.ifErr;
+export declare const leftFlatMapAsync: typeof Mx.ifErrAsync;
+export declare const leftBindAsync: typeof Mx.ifErrAsync;
+export declare const leftMap: typeof Mx.withErr;
+export declare const leftMapAsync: typeof Mx.withErrAsync;
 //# sourceMappingURL=monad-aliases.d.ts.map
