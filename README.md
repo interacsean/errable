@@ -1,15 +1,15 @@
 # Monax
 
-Monax is a suite of functions to help control logical flow and exception/error
-states while maintaining type safety, and encouraging consistent and flat programming.
+Monax is a suite of functions to help logical flow and error control, while
+maintaining type safety and encouraging consistent and flat programming.
  
- - Designed to be compatible in promise .then chains
- - Retains type safety for error states (unlike rejected Promises)
+ - Designed to be compatible in promise .then chains, or your favourite pipeline
+ - Retains type information for error states (unlike rejected Promises)
  - Improved flow-control over promises (as per the Fluture library)
- - Simplified terminology available (not so much with Fluture)
+ - Interface uses simplified, untuitive terms (not so much with Fluture)
 
-Monax is a monad library, but you don't really need to know what
-a monad is or how to use one in order to use Monax; we've translated the
+Monax reflects the philosophy of a monad library, without requiring you to
+know what they are or how to use them; we've translated the
 traditional mathemathical terms to an intuitive interface for easy onboarding.
 
 ## Installing
@@ -19,15 +19,16 @@ traditional mathemathical terms to an intuitive interface for easy onboarding.
 ## Guide on use
 
 
-Monax is most useful in typescript (flow defs coming), where throwing and catching exceptions in Promises is
+Monax is most useful in typescript (flow defs coming, PRs welcome), where rejections / throwing
+and catching errors in Promises is
 [imprecise by design](https://github.com/Microsoft/TypeScript/issues/6283#issuecomment-167851788). 
 
 ### Using functionally:
 
 All features are exported as standalone functions.
 
-It becomes more useful when used in a promise chain, composed or pipeline
-(see further below) but is shown here as a starting point:
+**It becomes most useful when used in a promise .then chain, composed or pipeline
+(see further below)** but is shown here as a starting point:
 
 **Simple but useless and naive example:**
 ```
@@ -37,31 +38,29 @@ import { Monax, val, err, withVal } from 'monax-js';
 // or import all using the `* as` pattern:
 import * as Mx from 'monax-js';
 
-const numAsNumber = Monax<Error, number> = Mx.fromFalsey(
-  badFunctionReturnsNumberOrFalseyForError,
+const step1_numAsNumber = Errable<Error, number> = Mx.fromNull(
+  // Create from a hypothetical function
+  badFunctionReturnsNumberOrNullForError(someFunctionInput),
+  // Create an error if the function returned null or undefined
   Error("Number error: Internal error code"),
 );
 
-const numAsNumber = Monax<Error, string> = Mx.ifVal(
+const step2_numAsString = Errable<Error, string> = Mx.ifVal(
+  // this function will run if arg2 is not an error
   (num: number) => `Thanks for choosing ${num.toLocaleString()}`,
-  mAsString,
+  step1_numAsNumber,
 );
 
-const numAsNumber = Monax<never, string> = Mx.ifErr(
+const step3_numAsString = string = Mx.ifErr(
   (err: Error) => "We couldn't retrieve your number",
-  mAsString,
-);
-
-Mx.tap(
-  (responseMessage: string) => console.log(responseMessage),
-  numAsNumber,
+  step2_numAsString,
 );
 ```
 
 *Why is this useful*? 
 
 In traditional javascript, errors are generally thrown within a function, making it annoying to
-recover within the same function scope, hard to enforce catching, and impossible to annotate your 
+continue exception handling within the same function scope, hard to enforce catching, and impossible to annotate your 
 function to ensure that a consumer appropriately handles the exception.
 
 If the caller of a function did not wrap the call in a `try`/`catch`,
@@ -234,7 +233,7 @@ leftMap == errMap == withErr
 awaitLeftMap == awaitErrMap == withAwaitedErr
 leftFlatMap == leftBind == errFlatMap == errBind == ifErr
 asyncLeftFlatMap == asyncLeftBind == asyncErrFlatMap == asyncErrBind == asyncIfErr
-// cata == recover
+// cata == reconcile
 ```
 
 **Utilities**

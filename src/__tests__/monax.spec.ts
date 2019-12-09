@@ -1,5 +1,4 @@
 import * as Mx from '../index';
-import {leftFlatMap} from "../index";
 
 function createPromise<T>(resOrRej: boolean, val: T): Promise<T> {
   return new Promise((res, rej) => {
@@ -30,7 +29,6 @@ describe('monax', () => {
       expect(Mx.isVal).toBe(Mx.isRight);
     });
   });
-
   describe('getRight', () => {
     it('returns for right', () => {
       const result = Mx.right(fixture);
@@ -93,6 +91,13 @@ describe('monax', () => {
       expect(Mx.isRight(result)).toBe(false);
       expect(Mx.getErr(result as Mx.Left<number>)).toBe(0);
     });
+
+    it('should create left on 0', () => {
+      const result = Mx.fromFalsey(0, 0);
+
+      expect(Mx.isRight(result)).toBe(false);
+      expect(Mx.getErr(result as Mx.Left<number>)).toBe(0);
+    });
   });
 
   describe('fromNull factory', () => {
@@ -133,7 +138,7 @@ describe('monax', () => {
         expect(Mx.isRight(result)).toBe(true);
         expect(Mx.getVal(result as Mx.Right<Fix>)).toBe(fixture);
         done();
-      });
+      }).catch(done);
     });
     it('should reject to left', (done) => {
       const prom: Promise<Mx.Monax<any, any>> = Mx.fromPromise(Promise.reject(fixture));
@@ -142,7 +147,7 @@ describe('monax', () => {
         expect(Mx.isRight(result)).toBe(false);
         expect(Mx.getErr(result as Mx.Left<Fix>)).toBe(fixture);
         done();
-      });
+      }).catch(done);
     });
   });
 
@@ -201,7 +206,7 @@ describe('monax', () => {
         expect(Mx.getRight(result as Mx.Right<Fix>)).toBe(fixture);
         expect(fn).toHaveBeenCalledWith(valFix);
         done();
-      });
+      }).catch(done);
     });
     it('has aliases', () => {
       // expect(Mx.map).toBe(Mx.awaitMap);
@@ -264,8 +269,8 @@ describe('monax', () => {
         expect(Mx.isLeft(result)).toBe(true);
         expect(Mx.getLeft(result as Mx.Left<{}>)).toBe(fixture);
         expect(fn).toHaveBeenCalledWith(valFix);
-        done()
-      });
+        done();
+      }).catch(done);
     });
     it('has aliases', () => {
       expect(Mx.withAwaitedErr).toBe(Mx.awaitLeftMap)
@@ -336,8 +341,8 @@ describe('monax', () => {
         expect(Mx.isRight(result)).toBe(true);
         expect(Mx.getRight(result as Mx.Right<{}>)).toBe(fixture);
         expect(fn).toHaveBeenCalledWith(valFix);
-        done()
-      });
+        done();
+      }).catch(done);
     });
     it('should work for promise return value on left', (done) => {
       const fn: (v: any) => Promise<Mx.Monax<any, any>> =
@@ -353,8 +358,8 @@ describe('monax', () => {
         expect(Mx.isRight(result)).toBe(false);
         expect(Mx.getLeft(result as Mx.Left<{}>)).toBe(valFix);
         expect(fn).not.toHaveBeenCalled();
-        done()
-      });
+        done();
+      }).catch(done);
     });
     it('has aliases', () => {
       expect(Mx.bind).toBe(Mx.flatMap);
@@ -429,7 +434,7 @@ describe('monax', () => {
         expect(Mx.getLeft(result as Mx.Left<{}>)).toBe(fixture);
         expect(fn).toHaveBeenCalledWith(valFix);
         done();
-      });
+      }).catch(done);
     });
     it('should work for promise return value on right', (done) => {
       const fn: (v: any) => Promise<Mx.Monax<any, any>> =
@@ -445,8 +450,8 @@ describe('monax', () => {
         expect(Mx.isLeft(result)).toBe(false);
         expect(Mx.getRight(result as Mx.Right<{}>)).toBe(valFix);
         expect(fn).not.toHaveBeenCalled();
-        done()
-      });
+        done();
+      }).catch(done);
     });
     it('has aliases', () => {
       expect(Mx.leftBind).toBe(Mx.leftFlatMap);

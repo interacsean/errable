@@ -1,7 +1,7 @@
 /**
  * todo:
  *  - Update README propers
- *  - compat with left(undefined) / Emptable / Errable type (aliases)
+ *  - compat with left(undefined) / Optional / Errable type (aliases)
  *  - monadic aliases to come from a different file
  *  - chain – class that aliases all functions to / non-promise .thens
  *  - + fork (like cata but must returns void)
@@ -16,15 +16,26 @@ const curry = (fn: Function, ...args: any[]) =>
     ? fn(...args)
     : (...more: any[]) => curry(fn, ...args, ...more);
 
-export type Err<E> = { data: E } & Error;
+
+export class Err<E> extends Error {
+  data: E;
+  constructor(message: string, data?: E) {
+    super(message);
+    this.data = data !== undefined ? data : ({} as E);
+  }
+}
 export type Left<E> = Err<E>;
+
 export type Val<T> = T;
 export type Right<E> = Val<E>;
+
 export type Monax<E, T> = Err<E> | Val<T>
 export type Errable<E, T> = Monax<E, T>;
-export type Emptable<T> = T | undefined;
-export type Optionax<T> = Emptable<T>;
 
+// todo: write docs and tests
+export type Optional<T> = T | undefined;
+
+export type Nullable<T> = T | null;
 
 /*************************
  *** Monax constructors **
@@ -35,30 +46,24 @@ export function right<T>(v: T): Val<T> {
 }
 export const val = right;
 
-export function isRight<E, T>(m: Monax<E, T>): m is Val<T> {
+export function isRight<T>(m: Monax<any, T>): m is Val<T> {
   return !(m instanceof Error);
+  // && !isEmpty(m) && !isUndefined(m)
 }
 export const isVal = isRight;
 
 export const getRight = <T>(r: Val<T>): T => r;
 export const getVal = getRight;
 
-class MxErr<E> extends Error {
-  
-}
-
 export function left<E>(e: E): Err<E> {
-  const err = e instanceof Error
-    ? e
-    : Error(typeof e === 'string' ? e : undefined);
-  // todo: custom error (MonadError)
-  // @ts-ignore
-  err.data = e;
-  return err as Err<E>;
+  if (e instanceof Err) return e;
+  else if (e instanceof Error) return new Err(e.message);
+  else if (typeof e === 'string') return new Err(e, e);
+  return new Err('', e);
 }
 export const err = left;
 
-export function isLeft<E, T>(m: Monax<E, T>): m is Err<E> {
+export function isLeft<E>(m: Monax<E, any>): m is Err<E> {
   return !isRight(m);
 }
 export const isErr = isLeft;
@@ -66,18 +71,22 @@ export const isErr = isLeft;
 export const getLeft = <E>(l: Err<E>): E => l.data;
 export const getErr = getLeft;
 
-export function fromFalsey<E, T>(val: T | undefined | null | false, ifFalsey: E): Monax<E, T> {
-  return val !== undefined && val !== null && val !== false
-    ? right(val)
+// todo: write docs and tests
+export function isUndefined<T>(optional: Optional<T>): optional is undefined {
+  return optional === undefined;
+}
+
+export function fromFalsey<E, T>(value: T | undefined | null, ifFalsey: E): Monax<E, T> {
+  return Boolean(value) && value !== undefined && value !== null
+    ? right(value)
     : left(ifFalsey);
 }
 
-export function fromNull<E, T>(val: T | undefined | null, ifNully: E): Monax<E, T> {
-  return val !== undefined && val !== null
-    ? right(val)
+export function fromNull<E, T>(value: T | undefined | null, ifNully: E): Monax<E, T> {
+  return value !== undefined && value !== null
+    ? right(value)
     : left(ifNully);
 }
-
 
 export function fromPromise<T>(promise: Promise<T>): Promise<Monax<any, T>> {
   return promise.then(
@@ -86,6 +95,11 @@ export function fromPromise<T>(promise: Promise<T>): Promise<Monax<any, T>> {
   );
 }
 
+// todo: write docs and tests
+// /!\ inconsistent with other fromFactory function, in that this is curried
+export function fromOptional<E, T>(error: E): (opt: Optional<T>) => Monax<E, T> {
+  return (optional: Optional<T>) => isUndefined(optional) ? err(error) : optional;
+}
 
 /**************************************
  *** Monax transformation functions  **
@@ -215,9 +229,9 @@ function _leftFlatMap<E, T, F>(
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-function leftFlatMap<E, T, F>(fn: ((e: F) => Monax<F, T>), m: Monax<E, T>): Monax<F, T>;
-function leftFlatMap<E, T, F>(fn: ((e: F) => Monax<F, T>)): ((m: Monax<E, T>) => Monax<F, T>);
-function leftFlatMap<E, T, F>(this: any, fn: ((e: F) => Monax<F, T>), m?: Monax<E, T>) {
+function leftFlatMap<E, T, F>(fn: ((e: E) => Monax<F, T>), m: Monax<E, T>): Monax<F, T>;
+function leftFlatMap<E, T, F>(fn: ((e: E) => Monax<F, T>)): ((m: Monax<E, T>) => Monax<F, T>);
+function leftFlatMap<E, T, F>(this: any, fn: ((e: E) => Monax<F, T>), m?: Monax<E, T>) {
   return curry(_leftFlatMap)(false).apply(this, arguments);
 }
 
@@ -375,34 +389,52 @@ export { cata };
 
 export const ifValElse = cata;
 
-//   Promise.prototype.tap = function<E, T>(fn: (val: T) => void): Pnd<E, T> {
-//     return this.then((val: T): T => {
-//       fn(val);
-//       return val;
-//     });
-//   };
 
-//   Promise.prototype.doubleTap = function<E, T>(fn: (rejVal: E | any | null, resVal: T | null, isResolved?: boolean) => void): Pnd<E, T> {
-//     return this.then(
-//       (resVal: T): T => {
-//         fn(null, resVal, true);
-//         return resVal;
-//       },
-//       (rejVal: E): Pnd<E, never> => {
-//         fn(rejVal, null, false);
-//         return Promise.reject(rejVal);
-//       },
-//     );
-//   };
 
-//   Promise.prototype.bimap = function<T, E, F, R>(
-//     rejFn: (rejVal: E | any) => F,
-//     resFn: (resVal: T) => R,
-//   ): Pnd<F, R> {
-//     return this.then(resFn, (e: E | any): Pnd<F, never> => Promise.reject(rejFn(e)));
-//   };
+/**
+ * Peak
+ *
+ * @param fn Function that will peak inside the monad
+ * @param m Monad to evaluate for execution
+ * @return Monad
+ */
 
-//   Promise.prototype.recover = function<E, T>(fn: (rejVal: E | any) => T): Promise<T> {
-//     return this.catch(fn);
-//   };
-// }
+function _peak<E, T>(fn: (m: Monax<E, T>) => void, m: Monax<E, T>): Monax<E, T> {
+  fn(m);
+  return m;
+}
+
+function peak<E, T>(fn: ((m: Monax<E, T>) => void), m: Monax<E, T>): Monax<E, T>;
+function peak<E, T>(fn: ((m: Monax<E, T>) => void)): ((m: Monax<E, T>) => Monax<E, T>);
+function peak<E, T>(this: any, fn: ((m: Monax<E, T>) => void), m?: Monax<E, T>) {
+  return curry(_peak).apply(this, arguments);
+}
+
+export { peak };
+
+
+/**
+ * PeakVal;
+ *
+ * @param fn Function that will peak inside the monad
+ * @param m Monad to evaluate for execution
+ * @return Monad
+ */
+
+function _peakVal<E, T>(fn: (v: T) => void, m: Monax<E, T>): Monax<E, T> {
+  if (isRight(m)) fn(m);
+  return m;
+}
+
+function peakVal<E, T>(fn: ((v: T) => void), m: Monax<E, T>): Monax<E, T>;
+function peakVal<E, T>(fn: ((v: T) => void)): ((m: Monax<E, T>) => Monax<E, T>);
+function peakVal<E, T>(this: any, fn: ((v: T) => void), m?: Monax<E, T>) {
+  return curry(_peakVal).apply(this, arguments);
+}
+
+export { peakVal };
+
+// todo: write docs and tests
+export function recover<E, T>(fallbackVal: T, m: Monax<E, T>): T {
+  return isErr(m) ? fallbackVal : m;
+}
