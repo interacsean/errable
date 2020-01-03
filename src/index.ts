@@ -32,7 +32,7 @@ export type Errable<E, T> = Err<E> | Val<T>;
 // todo: write docs and tests
 export type Optional<T> = T | undefined;
 export type Nullable<T> = T | null;
-export type Valable<E, T> = Err<E> | Val<T> | Optional<T> | Nullable<T>;
+export type Valable<E, T> = Errable<E, T> | Optional<T> | Nullable<T>;
 
 /*************************
  *** Monax constructors **
@@ -49,6 +49,8 @@ export function isVal<T>(m: Errable<any, T> | Nullable<T> | Optional<T>): m is V
 export function notErr<T>(m: Errable<any, T>): m is Val<T> {
   return !(m instanceof Error);
 }
+
+// todo: tests
 export function notUndefined<T>(m: Optional<T>): m is T {
   return m !== undefined;
 }
@@ -130,6 +132,7 @@ function _ifNotErr<E, T, R>(
  */
 function ifNotErr<E, T, R>(fn: ((v: T) => Errable<E, R>), m: Errable<E, T>): Errable<E, R>;
 function ifNotErr<E, T, R>(fn: ((v: T) => Errable<E, R>)): ((m: Errable<E, T>) => Errable<E, R>);
+// @ts-ignore
 function ifNotErr<E, T, R>(this: any, fn: ((v: T) => Errable<E, R>), m?: Errable<E, T>) {
   return curry(_ifNotErr)(false).apply(this, arguments);
 }
@@ -164,7 +167,7 @@ export { ifNotErrAsync }
 // todo: mv toNotErr
 
 function _withNotErr<E, T, R>(fn: (v: T) => R, m: Errable<E, T>): Errable<E, R> {
-  return notErr<T>(m) ? val(fn(getVal(m))) : m as Errable<E, R>;
+  return isVal<T>(m) ? val(fn(getVal(m))) : m as Errable<E, R>;
 }
 
 function withNotErr<E, T, R>(fn: ((v: T) => R), m: Errable<E, T>): Errable<E, R>;
@@ -198,10 +201,8 @@ function withNotErrAsync<E, T, R>(this: any, fn: ((v: T) => Promise<R>), m?: Err
 
 export { withNotErrAsync };
 
-export const withAwaitedVal = withNotErrAsync;
 
-
-
+// todo: try adding `fn: ((e: E) => T)` for reconciling the error
 function _ifErr<E, T, F>(retProm: false, fn: ((e: E) => Errable<F, T>), m: Errable<E, T>): Errable<F, T>;
 function _ifErr<E, T, F>(retProm: true, fn: ((e: E) => Promise<Errable<F, T>>), m: Errable<E, T>): Promise<Errable<F, T>>;
 function _ifErr<E, T, F>(

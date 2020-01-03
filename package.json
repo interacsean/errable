@@ -1,7 +1,7 @@
 {
-  "name": "monax",
-  "version": "0.1.0",
-  "description": "Simple and approachable, type friendly monads for javascript",
+  "name": "errable",
+  "version": "0.1.1",
+  "description": "Simple and approachable, type friendly monads for javascript and typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -17,12 +17,12 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/interacsean/monax.git"
+    "url": "git+https://github.com/interacsean/errable.git"
   },
   "bugs": {
-    "url": "https://github.com/interacsean/monax/issues"
+    "url": "https://github.com/interacsean/errable/issues"
   },
-  "homepage": "https://github.com/interacsean/monax#readme",
+  "homepage": "https://github.com/interacsean/errable#readme",
   "devDependencies": {
     "@types/jest": "24.0.11",
     "jest": "23.6.0",
