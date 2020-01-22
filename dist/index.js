@@ -12,9 +12,18 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * todo:
+ *  - val() and Val() are unnecessary
+ *  - prefer isVal over isNotErr, if possible.  Use overloads for Nullable | Errable etc
  *  - Update README propers
  *  - compat with err(undefined) / Optional / Errable type (aliases)
  *  - monadic aliases to come from a different file
@@ -37,7 +46,7 @@ var curry = function (fn) {
         for (var _i = 0; _i < arguments.length; _i++) {
             more[_i] = arguments[_i];
         }
-        return curry.apply(void 0, [fn].concat(args, more));
+        return curry.apply(void 0, __spreadArrays([fn], args, more));
     };
 };
 var Err = /** @class */ (function (_super) {
@@ -67,6 +76,7 @@ function notErr(m) {
     return !(m instanceof Error);
 }
 exports.notErr = notErr;
+// todo: tests
 function notUndefined(m) {
     return m !== undefined;
 }
@@ -92,11 +102,16 @@ function isErr(m) {
 }
 exports.isErr = isErr;
 exports.getErr = function (l) { return l.data; };
-// todo: write docs and tests
+// todo: write docs
 function isUndefined(opt) {
     return opt === undefined;
 }
 exports.isUndefined = isUndefined;
+// todo: write docs
+function isNull(opt) {
+    return opt === null;
+}
+exports.isNull = isNull;
 function fromFalsey(value, ifFalsey) {
     return Boolean(value) && value !== undefined && value !== null
         ? val(value)
@@ -126,10 +141,21 @@ function _ifNotErr(retProm, fn, m) {
             ? Promise.resolve(m)
             : m);
 }
+function _ifVal(retProm, fn, m) {
+    return isVal(m)
+        ? fn(exports.getVal(m))
+        : (retProm
+            ? Promise.resolve(m)
+            : m);
+}
 function ifNotErr(fn, m) {
     return curry(_ifNotErr)(false).apply(this, arguments);
 }
 exports.ifNotErr = ifNotErr;
+function ifVal(fn, m) {
+    return curry(_ifVal)(false).apply(this, arguments);
+}
+exports.ifVal = ifVal;
 function ifNotErrAsync(fn, m) {
     return curry(_ifNotErr)(true).apply(this, arguments);
 }
@@ -143,7 +169,7 @@ exports.ifNotErrAsync = ifNotErrAsync;
  */
 // todo: mv toNotErr
 function _withNotErr(fn, m) {
-    return notErr(m) ? val(fn(exports.getVal(m))) : m;
+    return isVal(m) ? val(fn(exports.getVal(m))) : m;
 }
 function withNotErr(fn, m) {
     return curry(_withNotErr).apply(this, arguments);
@@ -164,7 +190,6 @@ function withNotErrAsync(fn, m) {
     return curry(_withNotErrAsync).apply(this, arguments);
 }
 exports.withNotErrAsync = withNotErrAsync;
-exports.withAwaitedVal = withNotErrAsync;
 function _ifErr(retProm, fn, m) {
     return isErr(m)
         ? fn(exports.getErr(m))

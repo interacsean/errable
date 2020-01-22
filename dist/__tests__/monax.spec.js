@@ -14,25 +14,46 @@ function createPromise(resOrRej, val) {
         setTimeout(function () { return (resOrRej ? res : rej)(val); }, 50);
     });
 }
-describe('monax', function () {
+describe('errable', function () {
     var fixture = { fix: 'ture' };
     describe('a value', function () {
         var result = Mx.val(fixture);
         it('should be recognised by isVal', function () {
             expect(Mx.isVal(result)).toBe(true);
-            expect(Mx.isErr(result)).toBe(false);
         });
         it('should be recognised by isNotErr', function () {
             expect(Mx.notErr(result)).toBe(true);
-            expect(Mx.isErr(result)).toBe(false);
         });
         it('should be not recognised by isErr', function () {
             expect(Mx.isErr(result)).toBe(false);
-            expect(Mx.isVal(result)).toBe(true);
         });
         it('has aliases', function () {
             expect(Md.right).toBe(Mx.val);
             expect(Md.isRight).toBe(Mx.notErr);
+        });
+    });
+    describe('undefined', function () {
+        var result = undefined;
+        it('should be rejected by isVal', function () {
+            expect(Mx.isVal(result)).toBe(false);
+        });
+        it('should be recognised by isNotErr', function () {
+            expect(Mx.notErr(result)).toBe(true);
+        });
+        it('should be not recognised by isErr', function () {
+            expect(Mx.isUndefined(result)).toBe(true);
+        });
+    });
+    describe('null', function () {
+        var result = null;
+        it('should be rejected by isVal', function () {
+            expect(Mx.isVal(result)).toBe(false);
+        });
+        it('should be recognised by isNotErr', function () {
+            expect(Mx.notErr(result)).toBe(true);
+        });
+        it('should be not recognised by isErr', function () {
+            expect(Mx.isNull(result)).toBe(true);
         });
     });
     describe('getVal', function () {
@@ -43,10 +64,6 @@ describe('monax', function () {
     });
     describe('err', function () {
         var result = Mx.err(fixture);
-        var e = new Mx.Err('', fixture);
-        console.log('***', result);
-        console.log('tr', typeof result);
-        console.log('te', typeof e, e instanceof Mx.Err);
         it('should be recognised by isErr', function () {
             expect(Mx.isErr(result)).toBe(true);
             expect(Mx.notErr(result)).toBe(false);

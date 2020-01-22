@@ -1,5 +1,7 @@
 /**
  * todo:
+ *  - val() and Val() are unnecessary
+ *  - prefer isVal over isNotErr, if possible.  Use overloads for Nullable | Errable etc
  *  - Update README propers
  *  - compat with err(undefined) / Optional / Errable type (aliases)
  *  - monadic aliases to come from a different file
@@ -74,9 +76,14 @@ export function isErr<E>(m: Errable<E, any>): m is Err<E> {
 
 export const getErr = <E>(l: Err<E>): E => l.data;
 
-// todo: write docs and tests
+// todo: write docs
 export function isUndefined<T>(opt: Optional<T>): opt is undefined {
   return opt === undefined;
+}
+
+// todo: write docs
+export function isNull<T>(opt: Nullable<T>): opt is null {
+  return opt === null;
 }
 
 export function fromFalsey<E, T>(value: T | undefined | null, ifFalsey: E): Errable<E, T> {
@@ -122,6 +129,29 @@ function _ifNotErr<E, T, R>(
       : m);
 }
 
+function _ifVal<E, T, R>(retProm: false, fn: ((v: T) => Errable<E, R>), m: Errable<E, T>): Errable<E, R>;
+function _ifVal<E, T, R>(retProm: true, fn: ((v: T) => Promise<Errable<E, R>>), m: Errable<E, T>): Promise<Errable<E, R>>;
+function _ifVal<E, T, R>(retProm: false, fn: ((v: T) => Nullable<R>), m: Nullable<T>): Nullable<R>;
+function _ifVal<E, T, R>(retProm: true, fn: ((v: T) => Promise<Nullable<R>>), m: Nullable<T>): Promise<Nullable<R>>;
+function _ifVal<E, T, R>(retProm: false, fn: ((v: T) => Optional<R>), m: Optional<T>): Optional<R>;
+function _ifVal<E, T, R>(retProm: true, fn: ((v: T) => Promise<Optional<R>>), m: Optional<T>): Promise<Optional<R>>;
+function _ifVal<E, T, R>(
+  retProm: boolean,
+  fn: ((v: T) => Errable<E, R>)
+    | ((v: T) => Promise<Errable<E, R>>)
+    | ((v: T) => Nullable<R>)
+    | ((v: T) => Promise<Nullable<R>>)
+    | ((v: T) => Optional<R>)
+    | ((v: T) => Promise<Optional<R>>),
+  m: Errable<E, T> | Nullable<T> | Optional<T>,
+) {
+  return isVal<T>(m)
+    ? fn(getVal(m))
+    : (retProm
+      ? Promise.resolve(m)
+      : m);
+}
+
 
 /**
  * ifNotErr (flatMap)
@@ -132,12 +162,37 @@ function _ifNotErr<E, T, R>(
  */
 function ifNotErr<E, T, R>(fn: ((v: T) => Errable<E, R>), m: Errable<E, T>): Errable<E, R>;
 function ifNotErr<E, T, R>(fn: ((v: T) => Errable<E, R>)): ((m: Errable<E, T>) => Errable<E, R>);
-// @ts-ignore
 function ifNotErr<E, T, R>(this: any, fn: ((v: T) => Errable<E, R>), m?: Errable<E, T>) {
   return curry(_ifNotErr)(false).apply(this, arguments);
 }
 
 export { ifNotErr }
+
+
+/**
+ * ifVal (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param m Monad to evaluate for execution
+ * @return Monad
+ */
+function ifVal<E, T, R>(fn: ((v: T) => Errable<E, R>), m: Errable<E, T>): Errable<E, R>;
+function ifVal<E, T, R>(fn: ((v: T) => Errable<E, R>)): ((m: Errable<E, T>) => Errable<E, R>);
+function ifVal<E, T, R>(fn: ((v: T) => Nullable<R>), m: Nullable<T>): Nullable<R>;
+function ifVal<E, T, R>(fn: ((v: T) => Nullable<R>)): ((m: Nullable<T>) => Nullable<R>);
+function ifVal<E, T, R>(fn: ((v: T) => Optional<R>), m: Optional<T>): Optional<R>;
+function ifVal<E, T, R>(fn: ((v: T) => Optional<R>)): ((m: Optional<T>) => Optional<R>);
+function ifVal<E, T, R>(
+  this: any,
+  fn: ((v: T) => Errable<E, R>)
+    | ((v: T) => Nullable<R>)
+    | ((v: T) => Optional<R>),
+  m?: Errable<E, T> | Nullable<T> | Optional<T>
+) {
+  return curry(_ifVal)(false).apply(this, arguments);
+}
+
+export { ifVal }
 
 /**
  * ifNotErrAsync (flatMapAsync)

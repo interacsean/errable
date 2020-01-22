@@ -9,7 +9,7 @@ function createPromise<T>(resOrRej: boolean, val: T): Promise<T> {
 
 type Fix = { fix: string };
 
-describe('monax', () => {
+describe('errable', () => {
   const fixture: Fix = { fix: 'ture' };
 
   describe('a value', () => {
@@ -17,19 +17,44 @@ describe('monax', () => {
 
     it('should be recognised by isVal', () => {
       expect(Mx.isVal(result)).toBe(true);
-      expect(Mx.isErr(result)).toBe(false);
     });
     it('should be recognised by isNotErr', () => {
       expect(Mx.notErr(result)).toBe(true);
-      expect(Mx.isErr(result)).toBe(false);
     });
     it('should be not recognised by isErr', () => {
       expect(Mx.isErr(result)).toBe(false);
-      expect(Mx.isVal(result)).toBe(true);
     });
     it('has aliases', () => {
       expect(Md.right).toBe(Mx.val);
       expect(Md.isRight).toBe(Mx.notErr);
+    });
+  });
+
+  describe('undefined', () => {
+    const result = undefined;
+
+    it('should be rejected by isVal', () => {
+      expect(Mx.isVal(result)).toBe(false);
+    });
+    it('should be recognised by isNotErr', () => {
+      expect(Mx.notErr(result)).toBe(true);
+    });
+    it('should be not recognised by isErr', () => {
+      expect(Mx.isUndefined(result)).toBe(true);
+    });
+  });
+
+  describe('null', () => {
+    const result = null;
+
+    it('should be rejected by isVal', () => {
+      expect(Mx.isVal(result)).toBe(false);
+    });
+    it('should be recognised by isNotErr', () => {
+      expect(Mx.notErr(result)).toBe(true);
+    });
+    it('should be not recognised by isErr', () => {
+      expect(Mx.isNull(result)).toBe(true);
     });
   });
 
@@ -43,12 +68,6 @@ describe('monax', () => {
 
   describe('err', () => {
     const result = Mx.err(fixture);
-
-    const e = new Mx.Err<Fix>('', fixture);
-
-    console.log('***', result);
-    console.log('tr', typeof result);
-    console.log('te', typeof e, e instanceof Mx.Err);
 
     it('should be recognised by isErr', () => {
       expect(Mx.isErr(result)).toBe(true);

@@ -6,7 +6,7 @@ export declare type Val<T> = T;
 export declare type Errable<E, T> = Err<E> | Val<T>;
 export declare type Optional<T> = T | undefined;
 export declare type Nullable<T> = T | null;
-export declare type Valable<E, T> = Err<E> | Val<T> | Optional<T> | Nullable<T>;
+export declare type Valable<E, T> = Errable<E, T> | Optional<T> | Nullable<T>;
 /*************************
  *** Monax constructors **
  ************************/
@@ -20,6 +20,7 @@ export declare function err<E>(e: E): Err<E>;
 export declare function isErr<E>(m: Errable<E, any>): m is Err<E>;
 export declare const getErr: <E>(l: Err<E>) => E;
 export declare function isUndefined<T>(opt: Optional<T>): opt is undefined;
+export declare function isNull<T>(opt: Nullable<T>): opt is null;
 export declare function fromFalsey<E, T>(value: T | undefined | null, ifFalsey: E): Errable<E, T>;
 export declare function fromNull<E, T>(value: T | undefined | null, ifNully: E): Errable<E, T>;
 export declare function fromPromise<T>(promise: Promise<T>): Promise<Errable<any, T>>;
@@ -34,6 +35,20 @@ export declare function fromOptional<E, T>(error: E): (opt: Optional<T>) => Erra
 declare function ifNotErr<E, T, R>(fn: ((v: T) => Errable<E, R>), m: Errable<E, T>): Errable<E, R>;
 declare function ifNotErr<E, T, R>(fn: ((v: T) => Errable<E, R>)): ((m: Errable<E, T>) => Errable<E, R>);
 export { ifNotErr };
+/**
+ * ifVal (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param m Monad to evaluate for execution
+ * @return Monad
+ */
+declare function ifVal<E, T, R>(fn: ((v: T) => Errable<E, R>), m: Errable<E, T>): Errable<E, R>;
+declare function ifVal<E, T, R>(fn: ((v: T) => Errable<E, R>)): ((m: Errable<E, T>) => Errable<E, R>);
+declare function ifVal<E, T, R>(fn: ((v: T) => Nullable<R>), m: Nullable<T>): Nullable<R>;
+declare function ifVal<E, T, R>(fn: ((v: T) => Nullable<R>)): ((m: Nullable<T>) => Nullable<R>);
+declare function ifVal<E, T, R>(fn: ((v: T) => Optional<R>), m: Optional<T>): Optional<R>;
+declare function ifVal<E, T, R>(fn: ((v: T) => Optional<R>)): ((m: Optional<T>) => Optional<R>);
+export { ifVal };
 /**
  * ifNotErrAsync (flatMapAsync)
  *
@@ -50,7 +65,6 @@ export { withNotErr };
 declare function withNotErrAsync<E, T, R>(fn: ((v: T) => Promise<R>), m: Errable<E, T>): Promise<Errable<E, R>>;
 declare function withNotErrAsync<E, T, R>(fn: ((v: T) => Promise<R>)): ((m: Errable<E, T>) => Promise<Errable<E, R>>);
 export { withNotErrAsync };
-export declare const withAwaitedVal: typeof withNotErrAsync;
 /**
  * LeftFlatMap
  *
