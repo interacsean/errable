@@ -63,11 +63,13 @@ export function notNull<T>(m: Nullable<T>): m is T {
 // aka `id`
 export const getVal = <T>(r: Val<T>): T => r;
 
+// todo: type error, if an Err<F> is passed (as e), will return an Err<F>, but current typing shows Err<Err<F>>
 export function err<E>(e: E): Err<E> {
   if (e instanceof Err) return e;
-  else if (e instanceof Error) return new Err(e.message);
+  else if (e instanceof Error) return new Err(e.message, e);
   else if (typeof e === 'string') return new Err(e, e);
-  return new Err('', e);
+  // @ts-ignore
+  return new Err((e && e.message) || 'Errable error', e);
 }
 
 export function isErr<E>(m: Errable<E, any>): m is Err<E> {

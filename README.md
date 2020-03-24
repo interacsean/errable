@@ -47,33 +47,35 @@ import { Errable, val, err, withVal } from 'errable';
 // or import all using the `* as` pattern:
 import * as Ebl from 'errable';
 
-const step1_numAsNumber = Errable<string, number> = Ebl.fromNull(
+const step1: Errable<string, number> = Ebl.fromNull(
   // Create from a hypothetical function
-  badFunctionReturnsNumberOrNullForError(someFunctionInput),
+  fnWhichReturnsNumberOrNullForError(someFunctionInput),
   // Create an error message if the function returned null or undefined
   "Number error: Internal error code",
 );
 
-// step1_numAsNumber is now either: number | Ebl.Err<string>
+// step1 is either: number | Ebl.Err<string>
 
-const step2_numAsString = Errable<string, string> = Ebl.ifVal(
-  // this function will run if arg2 is not an error
-  (num: number): string => `Thanks for choosing ${num.toLocaleString()}`,
+const step2: Errable<string, string> = Ebl.ifVal(
+  // this function will run if `step1` is not an error
+  (num: number): string => `Thanks for choosing the number ${num.toLocaleString()}`,
   step1_numAsNumber,
 );
 
-const step3_numAsString = string = Ebl.ifErr(
+const step3: string = Ebl.errRecover(
   (err: Error) => "We couldn't retrieve your number",
-  step2_numAsString,
+  step2,
 );
 ```
 
 *Why is this useful*? 
 
-In traditional javascript, errors are generally thrown within a function, making it annoying to
-continue exception handling within the same function scope, hard to enforce catching, act on the error
-nearer to it's origin, and impossible to annotate your 
-function to ensure that a consumer appropriately handles the exception.
+In traditional javascript, errors are generally thrown within a function, necessitating the try/catch
+pattern, forcing error handling (of an unknown error type) to happen in another block scope, removed
+from the regular flow of your program.
+
+As a standalone piece of code, if your module throws an error, it is impossible to annotate the type 
+of the error that is thrown, in order for the consumer to appropriately handle the exception.
 
 If the caller of a function did not wrap the call in a `try`/`catch`,
 the error may be caught further upstream, or not at all.  Additionally
@@ -82,7 +84,7 @@ caught errors are of unknown or coerced type.
 Simply put, the program flow can not be easily expressed, nor could it be annotated or
 determined by the type signatures.
 
-Returning an expressive type (our Errable) solves this problem of multiple return types.
+Returning an union type (Errable<E, T>) solves this problem of multiple return types.
 
 **A more practical example**
 
