@@ -40,7 +40,10 @@ describe('errable', function () {
         it('should be recognised by isNotErr', function () {
             expect(Mx.notErr(result)).toBe(true);
         });
-        it('should be not recognised by isErr', function () {
+        it('should be not recognised by isNull', function () {
+            expect(Mx.isNull(result)).toBe(false);
+        });
+        it('should be recognised by isUndefined', function () {
             expect(Mx.isUndefined(result)).toBe(true);
         });
     });
@@ -52,7 +55,10 @@ describe('errable', function () {
         it('should be recognised by isNotErr', function () {
             expect(Mx.notErr(result)).toBe(true);
         });
-        it('should be not recognised by isErr', function () {
+        it('should be not recognised by isUndefined', function () {
+            expect(Mx.isUndefined(result)).toBe(false);
+        });
+        it('should be recognised by isNull', function () {
             expect(Mx.isNull(result)).toBe(true);
         });
     });
@@ -89,21 +95,21 @@ describe('errable', function () {
     });
     describe('fromFalsey factory', function () {
         it('should create val on truthy', function () {
-            var result = Mx.fromFalsey(5, 0);
+            var result = Mx.fromFalsey(0, 5);
             expect(Mx.isVal(result)).toBe(true);
         });
         it('should create err on false', function () {
-            var result = Mx.fromFalsey(false, 0);
+            var result = Mx.fromFalsey(0, false);
             expect(Mx.isVal(result)).toBe(false);
             expect(Mx.getErr(result)).toBe(0);
         });
         it('should create err on null', function () {
-            var result = Mx.fromFalsey(null, 0);
+            var result = Mx.fromFalsey(0, null);
             expect(Mx.isVal(result)).toBe(false);
             expect(Mx.getErr(result)).toBe(0);
         });
         it('should create err on undefined', function () {
-            var result = Mx.fromFalsey(undefined, 0);
+            var result = Mx.fromFalsey(0, undefined);
             expect(Mx.isVal(result)).toBe(false);
             expect(Mx.getErr(result)).toBe(0);
         });
@@ -112,25 +118,30 @@ describe('errable', function () {
             expect(Mx.isVal(result)).toBe(false);
             expect(Mx.getErr(result)).toBe(0);
         });
+        it('should be curried', function () {
+            var result = Mx.fromFalsey(0)(undefined);
+            expect(Mx.isVal(result)).toBe(false);
+            expect(Mx.getErr(result)).toBe(0);
+        });
     });
     describe('fromNull factory', function () {
         it('should create val on truthy', function () {
-            var result = Mx.fromNull(fixture, 0);
+            var result = Mx.fromNull(0, fixture);
             expect(Mx.isVal(result)).toBe(true);
             expect(Mx.getVal(result)).toBe(fixture);
         });
         it('should create val on false', function () {
-            var result = Mx.fromNull(false, 0);
+            var result = Mx.fromNull(0, false);
             expect(Mx.isVal(result)).toBe(true);
             expect(Mx.getVal(result)).toBe(false);
         });
         it('should create err on null', function () {
-            var result = Mx.fromNull(null, 0);
+            var result = Mx.fromNull(0, null);
             expect(Mx.isVal(result)).toBe(false);
             expect(Mx.getErr(result)).toBe(0);
         });
         it('should create err on undefined', function () {
-            var result = Mx.fromNull(undefined, 0);
+            var result = Mx.fromNull(0, undefined);
             expect(Mx.isVal(result)).toBe(false);
             expect(Mx.getErr(result)).toBe(0);
         });
@@ -329,6 +340,140 @@ describe('errable', function () {
             expect(Md.bindAsync).toBe(Mx.ifNotErrAsync);
         });
     });
+    describe('ifNotUndefined', function () {
+        it('should flatMap a Val', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var result = Mx.ifNotUndefined(fn, val);
+            expect(Mx.isVal(result)).toBe(true);
+            expect(Mx.getVal(result)).toBe(fixture);
+            expect(fn).toHaveBeenCalledWith(valFix);
+        });
+        it('should flatMap a Val and return undef', function () {
+            var fn = jest.fn().mockImplementation(function () { return undefined; });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var result = Mx.ifNotUndefined(fn, val);
+            expect(Mx.isUndefined(result)).toBe(true);
+            if (Mx.isUndefined(result))
+                expect(result).toBeUndefined();
+            expect(fn).toHaveBeenCalledWith(valFix);
+        });
+        it('should skip undefined', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val({}); });
+            var val = undefined;
+            var result = Mx.ifNotUndefined(fn, val);
+            expect(Mx.isUndefined(result)).toBe(true);
+            if (Mx.isUndefined(result))
+                expect(result).toBeUndefined();
+            expect(fn).not.toHaveBeenCalled();
+        });
+        it('should be curried', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var exec = Mx.ifNotUndefined(fn);
+            var result = exec(val);
+            expect(Mx.isVal(result)).toBe(true);
+            expect(Mx.getVal(result)).toBe(fixture);
+            expect(fn).toHaveBeenCalledWith(valFix);
+        });
+    });
+    describe('ifNotUndefinedAsync', function () {
+        it('should work for promise return value', function (done) {
+            var fn = jest.fn().mockImplementation(function () { return Promise.resolve(Mx.val(fixture)); });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var exec = Mx.ifNotUndefinedAsync(fn);
+            var prom = exec(val);
+            prom.then(function (result) {
+                expect(Mx.isVal(result)).toBe(true);
+                expect(Mx.getVal(result)).toBe(fixture);
+                expect(fn).toHaveBeenCalledWith(valFix);
+                done();
+            }).catch(done);
+        });
+        it('should work for promise return value on err', function (done) {
+            var fn = jest.fn().mockImplementation(function () { return Promise.resolve(Mx.val(fixture)); });
+            var err = undefined;
+            var exec = Mx.ifNotUndefinedAsync(fn);
+            var prom = exec(err);
+            prom.then(function (result) {
+                expect(Mx.isVal(result)).toBe(false);
+                expect(result).toBe(undefined);
+                expect(fn).not.toHaveBeenCalled();
+                done();
+            }).catch(done);
+        });
+    });
+    describe('ifNotNull', function () {
+        it('should flatMap a Val', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var result = Mx.ifNotNull(fn, val);
+            expect(Mx.isVal(result)).toBe(true);
+            expect(Mx.getVal(result)).toBe(fixture);
+            expect(fn).toHaveBeenCalledWith(valFix);
+        });
+        it('should flatMap a Val and return null', function () {
+            var fn = jest.fn().mockImplementation(function () { return null; });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var result = Mx.ifNotNull(fn, val);
+            expect(Mx.isNull(result)).toBe(true);
+            if (Mx.isNull(result))
+                expect(fn).toHaveBeenCalledWith(valFix);
+            expect(result).toBeNull();
+        });
+        it('should skip null', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val({}); });
+            var val = null;
+            var result = Mx.ifNotNull(fn, val);
+            expect(Mx.isNull(result)).toBe(true);
+            if (Mx.isNull(result))
+                expect(result).toBeNull();
+            expect(fn).not.toHaveBeenCalled();
+        });
+        it('should be curried', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var exec = Mx.ifNotNull(fn);
+            var result = exec(val);
+            expect(Mx.isVal(result)).toBe(true);
+            expect(Mx.getVal(result)).toBe(fixture);
+            expect(fn).toHaveBeenCalledWith(valFix);
+        });
+    });
+    describe('ifNotNullAsync', function () {
+        it('should work for promise return value', function (done) {
+            var fn = jest.fn().mockImplementation(function () { return Promise.resolve(Mx.val(fixture)); });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var exec = Mx.ifNotNullAsync(fn);
+            var prom = exec(val);
+            prom.then(function (result) {
+                expect(Mx.isVal(result)).toBe(true);
+                expect(Mx.getVal(result)).toBe(fixture);
+                expect(fn).toHaveBeenCalledWith(valFix);
+                done();
+            }).catch(done);
+        });
+        it('should work for promise return value on err', function (done) {
+            var fn = jest.fn().mockImplementation(function () { return Promise.resolve(Mx.val(fixture)); });
+            var err = null;
+            var exec = Mx.ifNotNullAsync(fn);
+            var prom = exec(err);
+            prom.then(function (result) {
+                expect(Mx.isVal(result)).toBe(false);
+                expect(result).toBeNull();
+                expect(fn).not.toHaveBeenCalled();
+                done();
+            }).catch(done);
+        });
+    });
     describe('ifErr', function () {
         it('should flatMap a Err', function () {
             var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
@@ -403,6 +548,116 @@ describe('errable', function () {
         it('has aliases', function () {
             expect(Md.leftFlatMapAsync).toBe(Mx.ifErrAsync);
             expect(Md.leftBindAsync).toBe(Mx.ifErrAsync);
+        });
+    });
+    describe('ifUndefined', function () {
+        it('should skip a Val', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var result = Mx.ifUndefined(fn, val);
+            expect(Mx.isVal(result)).toBe(true);
+            expect(Mx.getVal(result)).toBe(valFix);
+            expect(fn).not.toHaveBeenCalled();
+        });
+        it('should leftFlatMap undefined', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var val = undefined;
+            var result = Mx.ifUndefined(fn, val);
+            expect(Mx.isUndefined(result)).toBe(false);
+            if (!Mx.isUndefined(result))
+                expect(Mx.getVal(result)).toBe(fixture);
+            expect(fn).toHaveBeenCalled();
+        });
+        it('should be curried', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var val = undefined;
+            var exec = Mx.ifUndefined(fn);
+            var result = exec(val);
+            expect(Mx.isVal(result)).toBe(true);
+            expect(Mx.getVal(result)).toBe(fixture);
+            expect(fn).toHaveBeenCalled();
+        });
+    });
+    describe('ifUndefinedAsync', function () {
+        it('should work for promise return value', function (done) {
+            var fn = jest.fn().mockImplementation(function () { return Promise.resolve(Mx.val(fixture)); });
+            var val = undefined;
+            var exec = Mx.ifUndefinedAsync(fn);
+            var prom = exec(val);
+            prom.then(function (result) {
+                expect(Mx.isVal(result)).toBe(true);
+                expect(Mx.getVal(result)).toBe(fixture);
+                expect(fn).toHaveBeenCalled();
+                done();
+            }).catch(done);
+        });
+        it('should skip calling on value', function (done) {
+            var fn = jest.fn().mockImplementation(function () { return Promise.resolve(Mx.val(fixture)); });
+            var err = fixture;
+            var exec = Mx.ifUndefinedAsync(fn);
+            var prom = exec(err);
+            prom.then(function (result) {
+                expect(Mx.isVal(result)).toBe(true);
+                expect(result).toBe(fixture);
+                expect(fn).not.toHaveBeenCalled();
+                done();
+            }).catch(done);
+        });
+    });
+    describe('ifNull', function () {
+        it('should skip a Val', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var valFix = {};
+            var val = Mx.val(valFix);
+            var result = Mx.ifNull(fn, val);
+            expect(Mx.isVal(result)).toBe(true);
+            expect(Mx.getVal(result)).toBe(valFix);
+            expect(fn).not.toHaveBeenCalled();
+        });
+        it('should leftFlatMap a null', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var val = null;
+            var result = Mx.ifNull(fn, val);
+            expect(Mx.isNull(result)).toBe(false);
+            if (!Mx.isNull(result))
+                expect(Mx.getVal(result)).toBe(fixture);
+            expect(fn).toHaveBeenCalled();
+        });
+        it('should be curried', function () {
+            var fn = jest.fn().mockImplementation(function () { return Mx.val(fixture); });
+            var val = null;
+            var exec = Mx.ifNull(fn);
+            var result = exec(val);
+            expect(Mx.isVal(result)).toBe(true);
+            expect(Mx.getVal(result)).toBe(fixture);
+            expect(fn).toHaveBeenCalled();
+        });
+    });
+    describe('ifNullAsync', function () {
+        it('should work for promise return value', function (done) {
+            var fn = jest.fn().mockImplementation(function () { return Promise.resolve(Mx.val(fixture)); });
+            var val = null;
+            var exec = Mx.ifNullAsync(fn);
+            var prom = exec(val);
+            prom.then(function (result) {
+                expect(Mx.isVal(result)).toBe(true);
+                expect(Mx.getVal(result)).toBe(fixture);
+                expect(fn).toHaveBeenCalled();
+                done();
+            }).catch(done);
+        });
+        it('should work for promise return value on err', function (done) {
+            var fn = jest.fn().mockImplementation(function () { return Promise.resolve(Mx.val({})); });
+            var err = fixture;
+            var exec = Mx.ifNullAsync(fn);
+            var prom = exec(err);
+            prom.then(function (result) {
+                expect(Mx.isVal(result)).toBe(true);
+                expect(result).toBe(fixture);
+                expect(fn).not.toHaveBeenCalled();
+                done();
+            }).catch(done);
         });
     });
     describe('fork', function () {

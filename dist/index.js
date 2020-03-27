@@ -12,23 +12,16 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var __spreadArrays = (this && this.__spreadArrays) || function () {
-    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
-    for (var r = Array(s), k = 0, i = 0; i < il; i++)
-        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-            r[k] = a[j];
-    return r;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * todo:
+ *  - withUndefined, withNull -> do these make sense, seeing as you can't do anything "with" one and return anything
+ *    different, that is if{...} – maybe onUndefined, onNull, or recover{...}
  *  - val() and Val() are unnecessary
- *  - prefer isVal over isNotErr, if possible.  Use overloads for Nullable | Errable etc
  *  - Update README propers
  *  - compat with err(undefined) / Optional / Errable type (aliases)
  *  - monadic aliases to come from a different file
  *  - chain – class that aliases all functions to / non-promise .thens
- *  - + fork (like cata but must returns void)
  *  - + cata / recover (takes (fn: (err: E) => R) and unwraps the val)
  *     - the function for a val would be optional - if omitted, is `id`
  *     - this may make overloads complex as 2nd arg could be function or monax
@@ -46,7 +39,7 @@ var curry = function (fn) {
         for (var _i = 0; _i < arguments.length; _i++) {
             more[_i] = arguments[_i];
         }
-        return curry.apply(void 0, __spreadArrays([fn], args, more));
+        return curry.apply(void 0, [fn].concat(args, more));
     };
 };
 var Err = /** @class */ (function (_super) {
@@ -71,7 +64,6 @@ function isVal(m) {
     return !(m instanceof Error || m === null || m === undefined);
 }
 exports.isVal = isVal;
-// todo: isNotErr... etc
 function notErr(m) {
     return !(m instanceof Error);
 }
@@ -91,10 +83,11 @@ function err(e) {
     if (e instanceof Err)
         return e;
     else if (e instanceof Error)
-        return new Err(e.message);
+        return new Err(e.message, e);
     else if (typeof e === 'string')
         return new Err(e, e);
-    return new Err('', e);
+    // @ts-ignore
+    return new Err((e && e.message) || 'Errable error', e);
 }
 exports.err = err;
 function isErr(m) {
@@ -112,16 +105,20 @@ function isNull(opt) {
     return opt === null;
 }
 exports.isNull = isNull;
-function fromFalsey(value, ifFalsey) {
-    return Boolean(value) && value !== undefined && value !== null
-        ? val(value)
-        : err(ifFalsey);
+function fromFalsey(ifFalsey, value) {
+    return curry(function _fromFalsey(ifFalsey, value) {
+        return Boolean(value) && value !== undefined && value !== null
+            ? val(value)
+            : err(ifFalsey);
+    }).apply(this, arguments);
 }
 exports.fromFalsey = fromFalsey;
-function fromNull(value, ifNully) {
-    return value !== undefined && value !== null
-        ? val(value)
-        : err(ifNully);
+function fromNull(ifNully, value) {
+    return curry(function _fromNull(ifNully, value) {
+        return value !== undefined && value !== null
+            ? val(value)
+            : err(ifNully);
+    }).apply(this, arguments);
 }
 exports.fromNull = fromNull;
 function fromPromise(promise) {
@@ -160,6 +157,36 @@ function ifNotErrAsync(fn, m) {
     return curry(_ifNotErr)(true).apply(this, arguments);
 }
 exports.ifNotErrAsync = ifNotErrAsync;
+function _ifNotUndefined(retProm, fn, m) {
+    return notUndefined(m)
+        ? fn(exports.getVal(m))
+        : (retProm
+            ? Promise.resolve(m)
+            : m);
+}
+function ifNotUndefined(fn, o) {
+    return curry(_ifNotUndefined)(false).apply(this, arguments);
+}
+exports.ifNotUndefined = ifNotUndefined;
+function ifNotUndefinedAsync(fn, o) {
+    return curry(_ifNotUndefined)(true).apply(this, arguments);
+}
+exports.ifNotUndefinedAsync = ifNotUndefinedAsync;
+function _ifNotNull(retProm, fn, m) {
+    return notNull(m)
+        ? fn(exports.getVal(m))
+        : (retProm
+            ? Promise.resolve(m)
+            : m);
+}
+function ifNotNull(fn, n) {
+    return curry(_ifNotNull)(false).apply(this, arguments);
+}
+exports.ifNotNull = ifNotNull;
+function ifNotNullAsync(fn, n) {
+    return curry(_ifNotNull)(true).apply(this, arguments);
+}
+exports.ifNotNullAsync = ifNotNullAsync;
 /**
  * withNotErr (map)
  *
@@ -167,7 +194,6 @@ exports.ifNotErrAsync = ifNotErrAsync;
  * @param m Monad to evaluate for execution
  * @return Monad
  */
-// todo: mv toNotErr
 function _withNotErr(fn, m) {
     return isVal(m) ? val(fn(exports.getVal(m))) : m;
 }
@@ -205,6 +231,37 @@ function ifErrAsync(fn, m) {
     return curry(_ifErr)(true).apply(this, arguments);
 }
 exports.ifErrAsync = ifErrAsync;
+function _ifUndefined(retProm, fn, m) {
+    return isUndefined(m)
+        ? fn()
+        : (retProm
+            ? Promise.resolve(m)
+            : m);
+}
+function ifUndefined(fn, o) {
+    return curry(_ifUndefined)(false).apply(this, arguments);
+}
+exports.ifUndefined = ifUndefined;
+function ifUndefinedAsync(fn, o) {
+    return curry(_ifUndefined)(true).apply(this, arguments);
+}
+exports.ifUndefinedAsync = ifUndefinedAsync;
+function _ifNull(retProm, fn, m) {
+    return isNull(m)
+        ? fn()
+        : (retProm
+            ? Promise.resolve(m)
+            : m);
+}
+function ifNull(fn, n) {
+    return curry(_ifNull)(false).apply(this, arguments);
+}
+exports.ifNull = ifNull;
+function ifNullAsync(fn, n) {
+    return curry(_ifNull)(true).apply(this, arguments);
+}
+exports.ifNullAsync = ifNullAsync;
+//***
 /**
  * withErr (leftMap)
  *
@@ -227,7 +284,7 @@ exports.withErr = withErr;
  */
 function _withErrAsync(fn, m) {
     return isErr(m)
-        ? fn(exports.getErr(m)).then(err)
+        ? fn(exports.getErr(m)).then(function (e) { return err(e); })
         : Promise.resolve(m);
 }
 function withErrAsync(fn, m) {
@@ -256,18 +313,18 @@ exports.fork = fork;
  * @return Promise<Monad>
  */
 // todo: rename to standardise
-function _cata(vFn, eFn, m) {
+function _ifValElse(vFn, eFn, m) {
     return notErr(m) ? vFn(exports.getVal(m)) : eFn(exports.getErr(m));
 }
-function cata(vFn, eFn, m) {
-    return curry(_cata).apply(this, arguments);
+function ifValElse(vFn, eFn, m) {
+    return curry(_ifValElse).apply(this, arguments);
 }
-exports.cata = cata;
-exports.ifValElse = cata;
+exports.ifValElse = ifValElse;
+exports.cata = ifValElse;
 /**
  * Peek
  *
- * @param fn Function that will peek inside the monad
+ * @param fn Function that will peek inside the valable
  * @param m Monad to evaluate for execution
  * @return Monad
  */
@@ -295,7 +352,13 @@ function peekVal(fn, m) {
     return curry(_peekVal).apply(this, arguments);
 }
 exports.peekVal = peekVal;
-// todo: write docs and tests
+/**
+ * recover
+ *
+ * @param fallbackVal which will be used if not isVal
+ * @param m Errable
+ */
+// todo: curry, write docs and tests
 function recover(fallbackVal, m) {
     return isErr(m) ? fallbackVal : m;
 }

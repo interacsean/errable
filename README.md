@@ -9,16 +9,16 @@ iteration_
 
 --- 
 
-Errable is a suite of functions to help logical flow and error control, while
+Errable is a suite of functions to help conditional logical flow and dealing with exceptions, while
 maintaining type safety and encouraging consistent and flat programming.
  
- - Designed to be compatible in promise .then chains, or your favourite pipeline
+ - Designed to be compatible in promise .then chains, or your favourite functional pipeline (e.g. lodash / ramda)
  - Retains type information for error states (unlike rejected Promises)
  - Improved flow-control over promises (as per the Fluture library)
- - Interface uses simplified, untuitive terms (not so much with Fluture)
+ - Interface uses simplified, intuitive terms (not so much with Fluture!)
 
 Errable reflects the philosophy of a monad library, without requiring you to
-know what they are or how to use them; we've translated the
+know what the heck a monad is or how to use them; we've translated the
 traditional mathemathical terms to an intuitive interface for easy onboarding.
 
 ## Installing
@@ -27,8 +27,7 @@ traditional mathemathical terms to an intuitive interface for easy onboarding.
 
 ## Guide on use
 
-
-Errable is most useful in typescript (flow defs coming, PRs welcome), where rejections / throwing
+Errable is most useful in typescript (flow defs welcome), where rejections / throwing
 and catching errors in Promises is
 [imprecise by design](https://github.com/Microsoft/TypeScript/issues/6283#issuecomment-167851788). 
 
@@ -40,6 +39,8 @@ All features are exported as standalone functions.
 (see further below)** but is shown here as a starting point:
 
 **Simple but useless and naive example:**
+
+todo: example using accessing value in an object-map from a potential key
 ```
 // You can import individual functions and types:
 import { Errable, val, err, withVal } from 'errable';
@@ -71,11 +72,11 @@ const step3: string = Ebl.errRecover(
 *Why is this useful*? 
 
 In traditional javascript, errors are generally thrown within a function, necessitating the try/catch
-pattern, forcing error handling (of an unknown error type) to happen in another block scope, removed
+pattern.  This forces error handling (of an unknown error type) to happen in another block scope, removed
 from the regular flow of your program.
 
 As a standalone piece of code, if your module throws an error, it is impossible to annotate the type 
-of the error that is thrown, in order for the consumer to appropriately handle the exception.
+of the error that is thrown, in order for the consumer to appropriately handle the exception state.
 
 If the caller of a function did not wrap the call in a `try`/`catch`,
 the error may be caught further upstream, or not at all.  Additionally
@@ -84,7 +85,7 @@ caught errors are of unknown or coerced type.
 Simply put, the program flow can not be easily expressed, nor could it be annotated or
 determined by the type signatures.
 
-Returning an union type (Errable<E, T>) solves this problem of multiple return types.
+Returning an union type, aka `Err<E> | T` (aliased as `Errable<E, T>`) solves this problem of multiple return types.
 
 **A more practical example**
 
