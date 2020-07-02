@@ -137,8 +137,8 @@ export { ifErrAsync };
  * @param o Optional to evaluate for execution
  * @return Optional
  */
-declare function ifUndefined<T, R>(fn: (() => Optional<R>), o: Optional<T>): Optional<R>;
-declare function ifUndefined<T, R>(fn: (() => Optional<R>)): ((o: Optional<T>) => Optional<R>);
+declare function ifUndefined<T>(fn: (() => Optional<T>), o: Optional<T>): Optional<T>;
+declare function ifUndefined<T>(fn: (() => Optional<T>)): ((o: Optional<T>) => Optional<T>);
 export { ifUndefined };
 /**
  * ifUndefinedAsync (flatMap)
@@ -147,9 +147,29 @@ export { ifUndefined };
  * @param o Optional to evaluate for execution
  * @return Optional
  */
-declare function ifUndefinedAsync<T, R>(fn: (() => Promise<Optional<R>>), o: Optional<T>): Promise<Optional<R>>;
-declare function ifUndefinedAsync<T, R>(fn: (() => Promise<Optional<R>>)): ((o: Optional<T>) => Promise<Optional<R>>);
+declare function ifUndefinedAsync<T>(fn: (() => Promise<Optional<T>>), o: Optional<T>): Promise<Optional<T>>;
+declare function ifUndefinedAsync<T>(fn: (() => Promise<Optional<T>>)): ((o: Optional<T>) => Promise<Optional<T>>);
 export { ifUndefinedAsync };
+/**
+ * recoverUndefined (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param o Optional to evaluate for execution
+ * @return Optional
+ */
+declare function recoverUndefined<T>(fn: (() => T), o: Optional<T>): T;
+declare function recoverUndefined<T>(fn: (() => T)): ((o: Optional<T>) => T);
+export { recoverUndefined };
+/**
+ * recoverUndefinedAsync (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param o Optional to evaluate for execution
+ * @return Optional
+ */
+declare function recoverUndefinedAsync<T>(fn: (() => Promise<T>), o: Optional<T>): Promise<T>;
+declare function recoverUndefinedAsync<T>(fn: (() => Promise<T>)): ((o: Optional<T>) => Promise<T>);
+export { recoverUndefinedAsync };
 /**
  * ifNull (flatMap)
  *
@@ -157,8 +177,8 @@ export { ifUndefinedAsync };
  * @param n Nullable to evaluate for execution
  * @return Nullable
  */
-declare function ifNull<T, R>(fn: (() => Nullable<R>), n: Nullable<T>): Nullable<R>;
-declare function ifNull<T, R>(fn: (() => Nullable<R>)): ((n: Nullable<T>) => Nullable<R>);
+declare function ifNull<T>(fn: (() => Nullable<T>), n: Nullable<T>): Nullable<T>;
+declare function ifNull<T>(fn: (() => Nullable<T>)): ((n: Nullable<T>) => Nullable<T>);
 export { ifNull };
 /**
  * ifNullAsync (flatMap)
@@ -167,8 +187,8 @@ export { ifNull };
  * @param n Nullable to evaluate for execution
  * @return Nullable
  */
-declare function ifNullAsync<T, R>(fn: ((v: T) => Promise<Nullable<R>>), n: Nullable<T>): Promise<Nullable<R>>;
-declare function ifNullAsync<T, R>(fn: ((v: T) => Promise<Nullable<R>>)): ((n: Nullable<T>) => Promise<Nullable<R>>);
+declare function ifNullAsync<T>(fn: ((v: T) => Promise<Nullable<T>>), n: Nullable<T>): Promise<Nullable<T>>;
+declare function ifNullAsync<T>(fn: ((v: T) => Promise<Nullable<T>>)): ((n: Nullable<T>) => Promise<Nullable<T>>);
 export { ifNullAsync };
 declare function withErr<E, T, F>(fn: ((v: E) => F), m: Errable<E, T>): Errable<F, T>;
 declare function withErr<E, T, F>(fn: ((v: E) => F)): ((m: Errable<E, T>) => Errable<F, T>);
@@ -189,11 +209,7 @@ export { peek };
 declare function peekVal<E, T>(fn: ((v: T) => void), m: Errable<E, T>): Errable<E, T>;
 declare function peekVal<E, T>(fn: ((v: T) => void)): ((m: Errable<E, T>) => Errable<E, T>);
 export { peekVal };
-/**
- * recover
- *
- * @param fallbackVal which will be used if not isVal
- * @param m Errable
- */
-export declare function recover<E, T>(fallbackVal: T, m: Errable<E, T>): T;
+declare function recover<E, T>(fallbackVal: T, m: Errable<E, T>): T;
+declare function recover<E, T>(fallbackVal: T): ((m: Errable<E, T>) => T);
+export { recover };
 //# sourceMappingURL=index.d.ts.map

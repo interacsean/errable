@@ -1,7 +1,7 @@
 /**
  * todo:
  *  - withUndefined, withNull -> do these make sense, seeing as you can't do anything "with" one and return anything
- *    different, that is if{...} – maybe onUndefined, onNull, or recover{...}
+ *    different, that is if{...} – maybe recoverUndefined, onNull, or recover{...}
  *  - val() and Val() are unnecessary
  *  - Update README propers
  *  - compat with err(undefined) / Optional / Errable type (aliases)
@@ -417,11 +417,12 @@ export { ifErrAsync }
 
 
 //***
-function _ifUndefined<T, R>(retProm: false, fn: (() => Optional<R>), m: Optional<T>): Optional<R>;
-function _ifUndefined<T, R>(retProm: true, fn: (() => Promise<Optional<R>>), m: Optional<T>): Promise<Optional<R>>;
-function _ifUndefined<T, R>(
+
+function _ifUndefined<T>(retProm: false, fn: (() => Optional<T>), m: Optional<T>): Optional<T>;
+function _ifUndefined<T>(retProm: true, fn: (() => Promise<Optional<T>>), m: Optional<T>): Promise<Optional<T>>;
+function _ifUndefined<T>(
   retProm: boolean,
-  fn: (() => Optional<R>) | (() => Promise<Optional<R>>),
+  fn: (() => Optional<T>) | (() => Promise<Optional<T>>),
   m: Optional<T>,
 ) {
   return isUndefined(m)
@@ -439,9 +440,9 @@ function _ifUndefined<T, R>(
  * @param o Optional to evaluate for execution
  * @return Optional
  */
-function ifUndefined<T, R>(fn: (() => Optional<R>), o: Optional<T>): Optional<R>;
-function ifUndefined<T, R>(fn: (() => Optional<R>)): ((o: Optional<T>) => Optional<R>);
-function ifUndefined<T, R>(this: any, fn: (() => Optional<R>), o?: Optional<T>) {
+function ifUndefined<T>(fn: (() => Optional<T>), o: Optional<T>): Optional<T>;
+function ifUndefined<T>(fn: (() => Optional<T>)): ((o: Optional<T>) => Optional<T>);
+function ifUndefined<T>(this: any, fn: (() => Optional<T>), o?: Optional<T>) {
   return curry(_ifUndefined)(false).apply(this, arguments);
 }
 
@@ -455,20 +456,67 @@ export { ifUndefined }
  * @param o Optional to evaluate for execution
  * @return Optional
  */
-function ifUndefinedAsync<T, R>(fn: (() => Promise<Optional<R>>), o: Optional<T>): Promise<Optional<R>>;
-function ifUndefinedAsync<T, R>(fn: (() => Promise<Optional<R>>)): ((o: Optional<T>) => Promise<Optional<R>>);
-function ifUndefinedAsync<T, R>(this: any, fn: (() => Promise<Optional<R>>), o?: Optional<T>) {
+function ifUndefinedAsync<T>(fn: (() => Promise<Optional<T>>), o: Optional<T>): Promise<Optional<T>>;
+function ifUndefinedAsync<T>(fn: (() => Promise<Optional<T>>)): ((o: Optional<T>) => Promise<Optional<T>>);
+function ifUndefinedAsync<T>(this: any, fn: (() => Promise<Optional<T>>), o?: Optional<T>) {
   return curry(_ifUndefined)(true).apply(this, arguments);
 }
 
 export { ifUndefinedAsync }
 
 
-function _ifNull<T, R>(retProm: false, fn: (() => Nullable<R>), m: Nullable<T>): Nullable<R>;
-function _ifNull<T, R>(retProm: true, fn: (() => Promise<Nullable<R>>), m: Nullable<T>): Promise<Nullable<R>>;
-function _ifNull<T, R>(
+function _recoverUndefined<T>(retProm: false, fn: (() => T), m: Optional<T>): T;
+function _recoverUndefined<T>(retProm: true, fn: (() => Promise<T>), m: Optional<T>): Promise<T>;
+function _recoverUndefined<T>(
   retProm: boolean,
-  fn: (() => Nullable<R>) | (() => Promise<Nullable<R>>),
+  fn: (() => T) | (() => Promise<T>),
+  m: Optional<T>,
+) {
+  return isUndefined(m)
+    ? fn()
+    : (retProm
+      ? Promise.resolve(m)
+      : m);
+}
+
+
+/**
+ * recoverUndefined (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param o Optional to evaluate for execution
+ * @return Optional
+ */
+function recoverUndefined<T>(fn: (() => T), o: Optional<T>): T;
+function recoverUndefined<T>(fn: (() => T)): ((o: Optional<T>) => T);
+function recoverUndefined<T>(this: any, fn: (() => T), o?: Optional<T>) {
+  return curry(_recoverUndefined)(false).apply(this, arguments);
+}
+
+export { recoverUndefined }
+
+
+/**
+ * recoverUndefinedAsync (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param o Optional to evaluate for execution
+ * @return Optional
+ */
+function recoverUndefinedAsync<T>(fn: (() => Promise<T>), o: Optional<T>): Promise<T>;
+function recoverUndefinedAsync<T>(fn: (() => Promise<T>)): ((o: Optional<T>) => Promise<T>);
+function recoverUndefinedAsync<T>(this: any, fn: (() => Promise<T>), o?: Optional<T>) {
+  return curry(_recoverUndefined)(true).apply(this, arguments);
+}
+
+export { recoverUndefinedAsync }
+
+
+function _ifNull<T>(retProm: false, fn: (() => Nullable<T>), m: Nullable<T>): Nullable<T>;
+function _ifNull<T>(retProm: true, fn: (() => Promise<Nullable<T>>), m: Nullable<T>): Promise<Nullable<T>>;
+function _ifNull<T>(
+  retProm: boolean,
+  fn: (() => Nullable<T>) | (() => Promise<Nullable<T>>),
   m: Nullable<T>,
 ) {
   return isNull(m)
@@ -486,9 +534,9 @@ function _ifNull<T, R>(
  * @param n Nullable to evaluate for execution
  * @return Nullable
  */
-function ifNull<T, R>(fn: (() => Nullable<R>), n: Nullable<T>): Nullable<R>;
-function ifNull<T, R>(fn: (() => Nullable<R>)): ((n: Nullable<T>) => Nullable<R>);
-function ifNull<T, R>(this: any, fn: (() => Nullable<R>), n?: Nullable<T>) {
+function ifNull<T>(fn: (() => Nullable<T>), n: Nullable<T>): Nullable<T>;
+function ifNull<T>(fn: (() => Nullable<T>)): ((n: Nullable<T>) => Nullable<T>);
+function ifNull<T>(this: any, fn: (() => Nullable<T>), n?: Nullable<T>) {
   return curry(_ifNull)(false).apply(this, arguments);
 }
 
@@ -502,13 +550,60 @@ export { ifNull }
  * @param n Nullable to evaluate for execution
  * @return Nullable
  */
-function ifNullAsync<T, R>(fn: ((v: T) => Promise<Nullable<R>>), n: Nullable<T>): Promise<Nullable<R>>;
-function ifNullAsync<T, R>(fn: ((v: T) => Promise<Nullable<R>>)): ((n: Nullable<T>) => Promise<Nullable<R>>);
-function ifNullAsync<T, R>(this: any, fn: ((v: T) => Promise<Nullable<R>>), n?: Nullable<T>) {
+function ifNullAsync<T>(fn: ((v: T) => Promise<Nullable<T>>), n: Nullable<T>): Promise<Nullable<T>>;
+function ifNullAsync<T>(fn: ((v: T) => Promise<Nullable<T>>)): ((n: Nullable<T>) => Promise<Nullable<T>>);
+function ifNullAsync<T>(this: any, fn: ((v: T) => Promise<Nullable<T>>), n?: Nullable<T>) {
   return curry(_ifNull)(true).apply(this, arguments);
 }
 
 export { ifNullAsync }
+
+
+function _recoverNull<T>(retProm: false, fn: (() => T), m: Optional<T>): T;
+function _recoverNull<T>(retProm: true, fn: (() => Promise<T>), m: Optional<T>): Promise<T>;
+function _recoverNull<T>(
+  retProm: boolean,
+  fn: (() => T) | (() => Promise<T>),
+  m: Optional<T>,
+) {
+  return isNull(m)
+    ? fn()
+    : (retProm
+      ? Promise.resolve(m)
+      : m);
+}
+
+
+/**
+ * recoverNull (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param o Optional to evaluate for execution
+ * @return Optional
+ */
+function recoverNull<T>(fn: (() => T), o: Optional<T>): T;
+function recoverNull<T>(fn: (() => T)): ((o: Optional<T>) => T);
+function recoverNull<T>(this: any, fn: (() => T), o?: Optional<T>) {
+  return curry(_recoverNull)(false).apply(this, arguments);
+}
+
+export { recoverNull }
+
+
+/**
+ * recoverNullAsync (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param o Optional to evaluate for execution
+ * @return Optional
+ */
+function recoverNullAsync<T>(fn: (() => Promise<T>), o: Optional<T>): Promise<T>;
+function recoverNullAsync<T>(fn: (() => Promise<T>)): ((o: Optional<T>) => Promise<T>);
+function recoverNullAsync<T>(this: any, fn: (() => Promise<T>), o?: Optional<T>) {
+  return curry(_recoverNull)(true).apply(this, arguments);
+}
+
+export { recoverNullAsync }
 
 
 //***
@@ -688,6 +783,14 @@ export { peekVal };
  * @param m Errable
  */
 // todo: curry, write docs and tests
-export function recover<E, T>(fallbackVal: T, m: Errable<E, T>): T {
+function _recover<E, T>(fallbackVal: T, m: Errable<E, T>): T {
   return isErr(m) ? fallbackVal : m;
 }
+
+function recover<E, T>(fallbackVal: T, m: Errable<E, T>): T;
+function recover<E, T>(fallbackVal: T): ((m: Errable<E, T>) => T);
+function recover<E, T>(this: any, fallbackVal: T, m?: Errable<E, T>) {
+  return curry(_recover).apply(this, arguments);
+}
+
+export { recover }

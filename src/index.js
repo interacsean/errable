@@ -1,4 +1,3 @@
-"use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
@@ -12,7 +11,13 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-Object.defineProperty(exports, "__esModule", { value: true });
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 /**
  * todo:
  *  - withUndefined, withNull -> do these make sense, seeing as you can't do anything "with" one and return anything
@@ -39,7 +44,7 @@ var curry = function (fn) {
         for (var _i = 0; _i < arguments.length; _i++) {
             more[_i] = arguments[_i];
         }
-        return curry.apply(void 0, [fn].concat(args, more));
+        return curry.apply(void 0, __spreadArrays([fn], args, more));
     };
 };
 var Err = /** @class */ (function (_super) {
@@ -52,33 +57,28 @@ var Err = /** @class */ (function (_super) {
     }
     return Err;
 }(Error));
-exports.Err = Err;
+export { Err };
 /*************************
  *** Monax constructors **
  ************************/
-function val(v) {
+export function val(v) {
     return v;
 }
-exports.val = val;
-function isVal(m) {
+export function isVal(m) {
     return !(m instanceof Error || m === null || m === undefined);
 }
-exports.isVal = isVal;
-function notErr(m) {
+export function notErr(m) {
     return !(m instanceof Error);
 }
-exports.notErr = notErr;
 // todo: tests
-function notUndefined(m) {
+export function notUndefined(m) {
     return m !== undefined;
 }
-exports.notUndefined = notUndefined;
-function notNull(m) {
+export function notNull(m) {
     return m !== null;
 }
-exports.notNull = notNull;
 // aka `id`
-exports.getVal = function (r) { return r; };
+export var getVal = function (r) { return r; };
 function err(e) {
     if (e instanceof Err)
         return e;
@@ -89,22 +89,19 @@ function err(e) {
     // @ts-ignore
     return new Err((e && e.message) || 'Errable error', e);
 }
-exports.err = err;
-function isErr(m) {
+export { err };
+export function isErr(m) {
     return (m instanceof Err);
 }
-exports.isErr = isErr;
-exports.getErr = function (l) { return l.data; };
+export var getErr = function (l) { return l.data; };
 // todo: write docs
-function isUndefined(opt) {
+export function isUndefined(opt) {
     return opt === undefined;
 }
-exports.isUndefined = isUndefined;
 // todo: write docs
-function isNull(opt) {
+export function isNull(opt) {
     return opt === null;
 }
-exports.isNull = isNull;
 function fromFalsey(ifFalsey, value) {
     return curry(function _fromFalsey(ifFalsey, value) {
         return Boolean(value) && value !== undefined && value !== null
@@ -112,35 +109,32 @@ function fromFalsey(ifFalsey, value) {
             : err(ifFalsey);
     }).apply(this, arguments);
 }
-exports.fromFalsey = fromFalsey;
-function fromNull(ifNully, value) {
+export { fromFalsey };
+export function fromNull(ifNully, value) {
     return curry(function _fromNull(ifNully, value) {
         return value !== undefined && value !== null
             ? val(value)
             : err(ifNully);
     }).apply(this, arguments);
 }
-exports.fromNull = fromNull;
-function fromPromise(promise) {
+export function fromPromise(promise) {
     return promise.then(val, err);
 }
-exports.fromPromise = fromPromise;
 // todo: write docs and tests
 // /!\ inconsistent with other fromFactory function, in that this is curried
-function fromOptional(error) {
+export function fromOptional(error) {
     return function (optional) { return isUndefined(optional) ? err(error) : optional; };
 }
-exports.fromOptional = fromOptional;
 function _ifNotErr(retProm, fn, m) {
     return notErr(m)
-        ? fn(exports.getVal(m))
+        ? fn(getVal(m))
         : (retProm
             ? Promise.resolve(m)
             : m);
 }
 function _ifVal(retProm, fn, m) {
     return isVal(m)
-        ? fn(exports.getVal(m))
+        ? fn(getVal(m))
         : (retProm
             ? Promise.resolve(m)
             : m);
@@ -148,18 +142,18 @@ function _ifVal(retProm, fn, m) {
 function ifNotErr(fn, m) {
     return curry(_ifNotErr)(false).apply(this, arguments);
 }
-exports.ifNotErr = ifNotErr;
+export { ifNotErr };
 function ifVal(fn, m) {
     return curry(_ifVal)(false).apply(this, arguments);
 }
-exports.ifVal = ifVal;
+export { ifVal };
 function ifNotErrAsync(fn, m) {
     return curry(_ifNotErr)(true).apply(this, arguments);
 }
-exports.ifNotErrAsync = ifNotErrAsync;
+export { ifNotErrAsync };
 function _ifNotUndefined(retProm, fn, m) {
     return notUndefined(m)
-        ? fn(exports.getVal(m))
+        ? fn(getVal(m))
         : (retProm
             ? Promise.resolve(m)
             : m);
@@ -167,14 +161,14 @@ function _ifNotUndefined(retProm, fn, m) {
 function ifNotUndefined(fn, o) {
     return curry(_ifNotUndefined)(false).apply(this, arguments);
 }
-exports.ifNotUndefined = ifNotUndefined;
+export { ifNotUndefined };
 function ifNotUndefinedAsync(fn, o) {
     return curry(_ifNotUndefined)(true).apply(this, arguments);
 }
-exports.ifNotUndefinedAsync = ifNotUndefinedAsync;
+export { ifNotUndefinedAsync };
 function _ifNotNull(retProm, fn, m) {
     return notNull(m)
-        ? fn(exports.getVal(m))
+        ? fn(getVal(m))
         : (retProm
             ? Promise.resolve(m)
             : m);
@@ -182,11 +176,11 @@ function _ifNotNull(retProm, fn, m) {
 function ifNotNull(fn, n) {
     return curry(_ifNotNull)(false).apply(this, arguments);
 }
-exports.ifNotNull = ifNotNull;
+export { ifNotNull };
 function ifNotNullAsync(fn, n) {
     return curry(_ifNotNull)(true).apply(this, arguments);
 }
-exports.ifNotNullAsync = ifNotNullAsync;
+export { ifNotNullAsync };
 /**
  * withNotErr (map)
  *
@@ -195,12 +189,12 @@ exports.ifNotNullAsync = ifNotNullAsync;
  * @return Monad
  */
 function _withNotErr(fn, m) {
-    return isVal(m) ? val(fn(exports.getVal(m))) : m;
+    return isVal(m) ? val(fn(getVal(m))) : m;
 }
 function withNotErr(fn, m) {
     return curry(_withNotErr).apply(this, arguments);
 }
-exports.withNotErr = withNotErr;
+export { withNotErr };
 /**
  * withNotErrAsync (mapAsync)
  * @param fn Promise-returning-function to map if a Right/Val
@@ -209,16 +203,16 @@ exports.withNotErr = withNotErr;
  */
 function _withNotErrAsync(fn, m) {
     return notErr(m)
-        ? fn(exports.getVal(m)).then(val)
+        ? fn(getVal(m)).then(val)
         : Promise.resolve(m);
 }
 function withNotErrAsync(fn, m) {
     return curry(_withNotErrAsync).apply(this, arguments);
 }
-exports.withNotErrAsync = withNotErrAsync;
+export { withNotErrAsync };
 function _ifErr(retProm, fn, m) {
     return isErr(m)
-        ? fn(exports.getErr(m))
+        ? fn(getErr(m))
         : (retProm
             ? Promise.resolve(m)
             : m);
@@ -226,11 +220,11 @@ function _ifErr(retProm, fn, m) {
 function ifErr(fn, m) {
     return curry(_ifErr)(false).apply(this, arguments);
 }
-exports.ifErr = ifErr;
+export { ifErr };
 function ifErrAsync(fn, m) {
     return curry(_ifErr)(true).apply(this, arguments);
 }
-exports.ifErrAsync = ifErrAsync;
+export { ifErrAsync };
 function _ifUndefined(retProm, fn, m) {
     return isUndefined(m)
         ? fn()
@@ -241,11 +235,11 @@ function _ifUndefined(retProm, fn, m) {
 function ifUndefined(fn, o) {
     return curry(_ifUndefined)(false).apply(this, arguments);
 }
-exports.ifUndefined = ifUndefined;
+export { ifUndefined };
 function ifUndefinedAsync(fn, o) {
     return curry(_ifUndefined)(true).apply(this, arguments);
 }
-exports.ifUndefinedAsync = ifUndefinedAsync;
+export { ifUndefinedAsync };
 function _recoverUndefined(retProm, fn, m) {
     return isUndefined(m)
         ? fn()
@@ -256,11 +250,11 @@ function _recoverUndefined(retProm, fn, m) {
 function recoverUndefined(fn, o) {
     return curry(_recoverUndefined)(false).apply(this, arguments);
 }
-exports.recoverUndefined = recoverUndefined;
+export { recoverUndefined };
 function recoverUndefinedAsync(fn, o) {
     return curry(_recoverUndefined)(true).apply(this, arguments);
 }
-exports.recoverUndefinedAsync = recoverUndefinedAsync;
+export { recoverUndefinedAsync };
 function _ifNull(retProm, fn, m) {
     return isNull(m)
         ? fn()
@@ -271,11 +265,11 @@ function _ifNull(retProm, fn, m) {
 function ifNull(fn, n) {
     return curry(_ifNull)(false).apply(this, arguments);
 }
-exports.ifNull = ifNull;
+export { ifNull };
 function ifNullAsync(fn, n) {
     return curry(_ifNull)(true).apply(this, arguments);
 }
-exports.ifNullAsync = ifNullAsync;
+export { ifNullAsync };
 //***
 /**
  * withErr (leftMap)
@@ -285,12 +279,12 @@ exports.ifNullAsync = ifNullAsync;
  * @return Monad
  */
 function _withErr(fn, m) {
-    return isErr(m) ? err(fn(exports.getErr(m))) : m;
+    return isErr(m) ? err(fn(getErr(m))) : m;
 }
 function withErr(fn, m) {
     return curry(_withErr).apply(this, arguments);
 }
-exports.withErr = withErr;
+export { withErr };
 /**
  * AwaitLeftMap
  * @param fn Promise-returning-function to map if a Right/Val
@@ -299,13 +293,13 @@ exports.withErr = withErr;
  */
 function _withErrAsync(fn, m) {
     return isErr(m)
-        ? fn(exports.getErr(m)).then(function (e) { return err(e); })
+        ? fn(getErr(m)).then(function (e) { return err(e); })
         : Promise.resolve(m);
 }
 function withErrAsync(fn, m) {
     return curry(_withErrAsync).apply(this, arguments);
 }
-exports.withErrAsync = withErrAsync;
+export { withErrAsync };
 /**
  * Fork
  * @param vFn Function to evaluate if a Right/Val
@@ -314,12 +308,12 @@ exports.withErrAsync = withErrAsync;
  * @return Monad
  */
 function _fork(vFn, eFn, m) {
-    notErr(m) ? vFn(exports.getVal(m)) : eFn(exports.getErr(m));
+    notErr(m) ? vFn(getVal(m)) : eFn(getErr(m));
 }
 function fork(vFn, eFn, m) {
     return curry(_fork).apply(this, arguments);
 }
-exports.fork = fork;
+export { fork };
 /**
  * Cata
  * @param vFn Function to evaluate if a Right/Val
@@ -329,13 +323,13 @@ exports.fork = fork;
  */
 // todo: rename to standardise
 function _ifValElse(vFn, eFn, m) {
-    return notErr(m) ? vFn(exports.getVal(m)) : eFn(exports.getErr(m));
+    return notErr(m) ? vFn(getVal(m)) : eFn(getErr(m));
 }
 function ifValElse(vFn, eFn, m) {
     return curry(_ifValElse).apply(this, arguments);
 }
-exports.ifValElse = ifValElse;
-exports.cata = ifValElse;
+export { ifValElse };
+export var cata = ifValElse;
 /**
  * Peek
  *
@@ -350,7 +344,7 @@ function _peek(fn, m) {
 function peek(fn, m) {
     return curry(_peek).apply(this, arguments);
 }
-exports.peek = peek;
+export { peek };
 /**
  * PeakVal;
  *
@@ -366,7 +360,7 @@ function _peekVal(fn, m) {
 function peekVal(fn, m) {
     return curry(_peekVal).apply(this, arguments);
 }
-exports.peekVal = peekVal;
+export { peekVal };
 /**
  * recover
  *
@@ -380,5 +374,5 @@ function _recover(fallbackVal, m) {
 function recover(fallbackVal, m) {
     return curry(_recover).apply(this, arguments);
 }
-exports.recover = recover;
+export { recover };
 //# sourceMappingURL=index.js.map
