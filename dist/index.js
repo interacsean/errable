@@ -276,6 +276,21 @@ function ifNullAsync(fn, n) {
     return curry(_ifNull)(true).apply(this, arguments);
 }
 exports.ifNullAsync = ifNullAsync;
+function _recoverNull(retProm, fn, m) {
+    return isNull(m)
+        ? fn()
+        : (retProm
+            ? Promise.resolve(m)
+            : m);
+}
+function recoverNull(fn, o) {
+    return curry(_recoverNull)(false).apply(this, arguments);
+}
+exports.recoverNull = recoverNull;
+function recoverNullAsync(fn, o) {
+    return curry(_recoverNull)(true).apply(this, arguments);
+}
+exports.recoverNullAsync = recoverNullAsync;
 //***
 /**
  * withErr (leftMap)

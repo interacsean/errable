@@ -559,12 +559,12 @@ function ifNullAsync<T>(this: any, fn: ((v: T) => Promise<Nullable<T>>), n?: Nul
 export { ifNullAsync }
 
 
-function _recoverNull<T>(retProm: false, fn: (() => T), m: Optional<T>): T;
-function _recoverNull<T>(retProm: true, fn: (() => Promise<T>), m: Optional<T>): Promise<T>;
+function _recoverNull<T>(retProm: false, fn: (() => T), m: Nullable<T>): T;
+function _recoverNull<T>(retProm: true, fn: (() => Promise<T>), m: Nullable<T>): Promise<T>;
 function _recoverNull<T>(
   retProm: boolean,
   fn: (() => T) | (() => Promise<T>),
-  m: Optional<T>,
+  m: Nullable<T>,
 ) {
   return isNull(m)
     ? fn()
@@ -578,12 +578,12 @@ function _recoverNull<T>(
  * recoverNull (flatMap)
  *
  * @param fn Function to map if a Right/Val
- * @param o Optional to evaluate for execution
- * @return Optional
+ * @param o Nullable to evaluate for execution
+ * @return Nullable
  */
-function recoverNull<T>(fn: (() => T), o: Optional<T>): T;
-function recoverNull<T>(fn: (() => T)): ((o: Optional<T>) => T);
-function recoverNull<T>(this: any, fn: (() => T), o?: Optional<T>) {
+function recoverNull<T>(fn: (() => T), o: Nullable<T>): T;
+function recoverNull<T>(fn: (() => T)): ((o: Nullable<T>) => T);
+function recoverNull<T>(this: any, fn: (() => T), o?: Nullable<T>) {
   return curry(_recoverNull)(false).apply(this, arguments);
 }
 
@@ -594,12 +594,12 @@ export { recoverNull }
  * recoverNullAsync (flatMap)
  *
  * @param fn Function to map if a Right/Val
- * @param o Optional to evaluate for execution
- * @return Optional
+ * @param o Nullable to evaluate for execution
+ * @return Nullable
  */
-function recoverNullAsync<T>(fn: (() => Promise<T>), o: Optional<T>): Promise<T>;
-function recoverNullAsync<T>(fn: (() => Promise<T>)): ((o: Optional<T>) => Promise<T>);
-function recoverNullAsync<T>(this: any, fn: (() => Promise<T>), o?: Optional<T>) {
+function recoverNullAsync<T>(fn: (() => Promise<T>), o: Nullable<T>): Promise<T>;
+function recoverNullAsync<T>(fn: (() => Promise<T>)): ((o: Nullable<T>) => Promise<T>);
+function recoverNullAsync<T>(this: any, fn: (() => Promise<T>), o?: Nullable<T>) {
   return curry(_recoverNull)(true).apply(this, arguments);
 }
 

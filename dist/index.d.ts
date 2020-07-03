@@ -190,6 +190,26 @@ export { ifNull };
 declare function ifNullAsync<T>(fn: ((v: T) => Promise<Nullable<T>>), n: Nullable<T>): Promise<Nullable<T>>;
 declare function ifNullAsync<T>(fn: ((v: T) => Promise<Nullable<T>>)): ((n: Nullable<T>) => Promise<Nullable<T>>);
 export { ifNullAsync };
+/**
+ * recoverNull (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param o Nullable to evaluate for execution
+ * @return Nullable
+ */
+declare function recoverNull<T>(fn: (() => T), o: Nullable<T>): T;
+declare function recoverNull<T>(fn: (() => T)): ((o: Nullable<T>) => T);
+export { recoverNull };
+/**
+ * recoverNullAsync (flatMap)
+ *
+ * @param fn Function to map if a Right/Val
+ * @param o Nullable to evaluate for execution
+ * @return Nullable
+ */
+declare function recoverNullAsync<T>(fn: (() => Promise<T>), o: Nullable<T>): Promise<T>;
+declare function recoverNullAsync<T>(fn: (() => Promise<T>)): ((o: Nullable<T>) => Promise<T>);
+export { recoverNullAsync };
 declare function withErr<E, T, F>(fn: ((v: E) => F), m: Errable<E, T>): Errable<F, T>;
 declare function withErr<E, T, F>(fn: ((v: E) => F)): ((m: Errable<E, T>) => Errable<F, T>);
 export { withErr };
