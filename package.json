@@ -1,6 +1,6 @@
 {
   "name": "errable",
-  "version": "0.3.5",
+  "version": "1.0.0",
   "description": "Simple and approachable, type friendly monads for javascript and typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,6 +28,5 @@
     "jest": "23.6.0",
     "ts-jest": "23.10.5",
     "typescript": "3.4.4"
-  },
-  "dependencies": {}
+  }
 }
